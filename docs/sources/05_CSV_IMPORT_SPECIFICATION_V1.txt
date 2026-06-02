@@ -1,0 +1,42 @@
+APOCTRL CSV IMPORT SPECIFICATION V1.0
+
+Ziel:
+Import externer Preisdaten in ApoCtrl.
+
+Unterstützte Formate:
+- CSV UTF-8
+- Trennzeichen ; oder ,
+- Header erforderlich
+
+Pflichtfelder:
+- PZN
+- Produktname
+- Wettbewerber
+- Preis
+
+Optionale Felder:
+- Versandkosten
+- Lieferstatus
+- Hersteller
+- Kategorie
+
+Importablauf:
+1. Upload
+2. Vorschau
+3. Mapping
+4. Validierung
+5. Import
+6. Log-Erstellung
+
+Regeln:
+- Fehlerhafte Zeilen überspringen
+- Gesamtimport nicht abbrechen
+- Jede Importdatei protokollieren
+- Snapshots niemals überschreiben
+
+Import-Logs:
+- Dateiname
+- Startzeit
+- Endzeit
+- Anzahl Datensätze
+- Anzahl Fehler

@@ -1,0 +1,20 @@
+APOCTRL RANKING & PRICING ENGINE V1.0
+
+Ranking:
+Endpreis = Preis + Versand
+Niedrigster Endpreis = Rang 1
+Nicht lieferbare Anbieter ignorieren
+
+Preisvorschläge:
+Input:
+- Zielranking
+- Mindestpreis
+- Wettbewerberpreise
+
+Output:
+- Vorgeschlagener Preis
+- Erwarteter Rang
+- Begründung
+
+Regel:
+Nie unter min_price.

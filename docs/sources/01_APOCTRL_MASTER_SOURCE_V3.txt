@@ -1,0 +1,6 @@
+APOCTRL MASTER SOURCE V3.0
+Vision: Führende Preis- und Marktanalyseplattform für Apotheken.
+MVP: Produkte, Wettbewerber, CSV-Import, Snapshots, Rankings, Preisvorschläge, Alerts, Reports.
+Technik: PHP 8.x, SQLite, PDO, Shared Hosting, IONOS/Strato.
+Architektur: Modular, KISS, keine Framework-Pflicht.
+Roadmap: Historische Analysen, Herstelleranalysen, API, Multi-Mandant, SaaS.

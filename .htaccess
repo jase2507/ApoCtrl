@@ -1,0 +1,17 @@
+# ApoCtrl – Root .htaccess
+# Empfohlen: Document Root auf /public setzen (IONOS, Strato)
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Direktzugriff auf sensible Verzeichnisse verweigern
+    RewriteRule ^(core|config|storage|templates|modules)/ - [F,L]
+
+    # Falls Document Root nicht auf public/ zeigt: Anfragen weiterleiten
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+Options -Indexes

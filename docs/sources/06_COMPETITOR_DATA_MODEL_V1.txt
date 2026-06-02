@@ -1,0 +1,36 @@
+APOCTRL COMPETITOR DATA MODEL V1.0
+
+Primäre Wettbewerber:
+- Medizinfuchs
+- Shop Apotheke
+- DocMorris
+- Aponeo
+- Sanicare
+- Volksversand
+
+Tabelle competitors:
+
+id
+name
+url
+priority
+active
+created_at
+updated_at
+
+Erweiterungen:
+- marketplace_type
+- country
+- notes
+
+Preisdatensätze:
+- Preis
+- Versandkosten
+- Lieferstatus
+- Ranking
+- Erfassungszeitpunkt
+
+Lieferstatus:
+- lieferbar
+- begrenzt
+- nicht lieferbar

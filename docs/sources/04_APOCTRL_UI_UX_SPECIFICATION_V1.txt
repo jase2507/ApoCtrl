@@ -1,0 +1,30 @@
+APOCTRL UI/UX SPECIFICATION V1.0
+
+Navigation:
+Dashboard
+Produkte
+Wettbewerber
+Importe
+Rankings
+Preisvorschläge
+Alerts
+Reports
+Benutzer
+Einstellungen
+
+Dashboard:
+KPI-Kacheln
+Alerts
+Top Gewinner
+Top Verlierer
+
+Produkte:
+Suche
+Filter
+CRUD
+
+Import:
+Upload
+Vorschau
+Mapping
+Import

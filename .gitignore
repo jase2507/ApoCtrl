@@ -1,0 +1,21 @@
+# Lokale Konfiguration (Secrets)
+/config/config.php
+
+# SQLite-Datenbank
+/storage/database/*.sqlite
+/storage/database/*.sqlite-journal
+/storage/database/*.sqlite-wal
+/storage/database/*.sqlite-shm
+
+# Logs
+/storage/logs/*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporäre Dateien
+*.tmp
+*.bak

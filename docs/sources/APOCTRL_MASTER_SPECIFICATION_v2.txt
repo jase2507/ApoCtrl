@@ -1,0 +1,275 @@
+
+APOCTRL MASTER SPECIFICATION v2.0
+=================================
+TECHNISCHES PFLICHTENHEFT
+
+1. VERZEICHNISSTRUKTUR
+----------------------
+/public
+  index.php
+  login.php
+  logout.php
+
+/core
+  bootstrap.php
+  database.php
+  auth.php
+  csrf.php
+  helpers.php
+
+/modules
+  /dashboard
+  /products
+  /competitors
+  /imports
+  /rankings
+  /suggestions
+  /alerts
+  /reports
+  /settings
+  /users
+
+/storage
+  /database
+  /logs
+  /exports
+  /imports
+  /backups
+
+2. SQL-DATENBANKSCHEMA
+----------------------
+
+CREATE TABLE users (
+ id INTEGER PRIMARY KEY,
+ username TEXT UNIQUE,
+ password_hash TEXT,
+ role TEXT,
+ created_at DATETIME
+);
+
+CREATE TABLE products (
+ id INTEGER PRIMARY KEY,
+ pzn TEXT UNIQUE,
+ name TEXT,
+ manufacturer TEXT,
+ cost_price REAL,
+ sale_price REAL,
+ min_price REAL,
+ target_rank INTEGER,
+ strategy TEXT,
+ category TEXT,
+ active INTEGER,
+ created_at DATETIME,
+ updated_at DATETIME
+);
+
+CREATE TABLE competitors (
+ id INTEGER PRIMARY KEY,
+ name TEXT,
+ url TEXT,
+ active INTEGER
+);
+
+CREATE TABLE price_snapshots (
+ id INTEGER PRIMARY KEY,
+ product_id INTEGER,
+ competitor_id INTEGER,
+ price REAL,
+ shipping_cost REAL,
+ ranking INTEGER,
+ captured_at DATETIME
+);
+
+CREATE TABLE own_price_snapshots (
+ id INTEGER PRIMARY KEY,
+ product_id INTEGER,
+ price REAL,
+ captured_at DATETIME
+);
+
+CREATE TABLE suggestions (
+ id INTEGER PRIMARY KEY,
+ product_id INTEGER,
+ current_price REAL,
+ suggested_price REAL,
+ reason TEXT,
+ created_at DATETIME
+);
+
+CREATE TABLE alerts (
+ id INTEGER PRIMARY KEY,
+ product_id INTEGER,
+ type TEXT,
+ priority TEXT,
+ message TEXT,
+ status TEXT,
+ created_at DATETIME
+);
+
+CREATE TABLE audit_logs (
+ id INTEGER PRIMARY KEY,
+ user_id INTEGER,
+ action TEXT,
+ details TEXT,
+ created_at DATETIME
+);
+
+3. NAVIGATION
+-------------
+Dashboard
+Produkte
+Wettbewerber
+Importe
+Rankings
+Preisvorschläge
+Alerts
+Reports
+Benutzer
+Einstellungen
+
+4. BILDSCHIRMMASKEN
+-------------------
+
+Dashboard:
+- KPI Kacheln
+- Alerts
+- Top Gewinner
+- Top Verlierer
+- Marktindex
+
+Produkte:
+- Tabelle
+- Suche
+- Filter
+- Neu
+- Bearbeiten
+
+Produktdetail:
+- Stammdaten
+- Historie
+- Rankings
+- Preisvorschläge
+
+Wettbewerber:
+- Liste
+- Aktiv/Inaktiv
+
+Import:
+- Datei auswählen
+- Vorschau
+- Mapping
+- Import starten
+
+Alerts:
+- Offene Alerts
+- Historie
+
+Reports:
+- Preisreport
+- Rankingreport
+- Margenreport
+
+5. RANKING ENGINE
+-----------------
+Berechnung:
+Endpreis = Preis + Versand
+
+Regeln:
+- günstigster Preis = Rang 1
+- nicht lieferbare Anbieter ignorieren
+- Preisgleichheit erlaubt
+
+6. PREISVORSCHLAGSENGINE
+------------------------
+Input:
+- Zielranking
+- Mindestpreis
+- Wettbewerberpreise
+
+Output:
+- Vorschlag
+- Begründung
+
+7. CRONJOBS
+-----------
+daily_import.php
+daily_rankings.php
+daily_alerts.php
+daily_backups.php
+
+Zeitplan:
+02:00 Import
+03:00 Ranking
+03:15 Alerts
+04:00 Backup
+
+8. API VORBEREITUNG
+-------------------
+GET /products
+GET /rankings
+GET /alerts
+GET /reports
+
+POST /imports
+
+JSON:
+{
+  "success": true,
+  "data": []
+}
+
+9. FEHLERBEHANDLUNG
+-------------------
+Importfehler protokollieren
+Scrapingfehler protokollieren
+Datenbankfehler loggen
+Benutzerfehler anzeigen
+
+10. TESTFÄLLE
+-------------
+Login erfolgreich
+Login fehlerhaft
+
+Produkt anlegen
+Produkt ändern
+Produkt löschen
+
+CSV Import erfolgreich
+CSV Import fehlerhaft
+
+Ranking korrekt berechnet
+
+Preisvorschlag korrekt
+
+Alert wird erzeugt
+
+11. SICHERHEIT
+--------------
+Passwort Hashing
+CSRF Schutz
+Prepared Statements
+Session Timeout
+Audit Logging
+
+12. MVP ABNAHMEKRITERIEN
+------------------------
+Login funktioniert
+Produkte verwaltbar
+CSV Import möglich
+Preisdaten vorhanden
+Ranking berechnet
+Preisvorschläge erzeugt
+Alerts erzeugt
+Dashboard funktionsfähig
+CSV Export funktionsfähig
+Alle Tests bestanden
+
+13. ROADMAP NACH MVP
+--------------------
+Phase 11 Marktanalysen
+Phase 12 Herstelleranalysen
+Phase 13 SaaS Vorbereitung
+Phase 14 Multi-Mandant
+Phase 15 Cloud Hosting
+Phase 16 Kundenportal
+Phase 17 API Freigabe

@@ -1,0 +1,29 @@
+APOCTRL REPORTING & ANALYTICS V1.0
+
+Dashboard KPIs:
+- Produkte gesamt
+- Aktive Produkte
+- Alerts offen
+- Durchschnittsranking
+- Marktindex
+
+Reports:
+1. Preisreport
+2. Rankingreport
+3. Margenreport
+4. Wettbewerberreport
+
+Historische Analysen:
+- Tag
+- Woche
+- Monat
+- Jahr
+
+Exports:
+- CSV
+- Excel (später)
+
+Visualisierung:
+- Rankingentwicklung
+- Preisentwicklung
+- Margenentwicklung

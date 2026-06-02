@@ -1,0 +1,32 @@
+APOCTRL SAAS PREPARATION V1.0
+
+Ziel:
+Vorbereitung auf Multi-Mandanten-System.
+
+Mandantenmodell:
+tenants
+users
+products
+snapshots
+alerts
+
+Jeder Datensatz erhält:
+tenant_id
+
+Rollen:
+- Super Admin
+- Admin
+- User
+- Read Only
+
+Spätere Funktionen:
+- Mandantenverwaltung
+- Abrechnung
+- API-Schlüssel
+- Kundenportal
+
+Cloud Roadmap:
+Phase 1 MVP
+Phase 2 Multi-Mandant
+Phase 3 SaaS
+Phase 4 Kundenportal

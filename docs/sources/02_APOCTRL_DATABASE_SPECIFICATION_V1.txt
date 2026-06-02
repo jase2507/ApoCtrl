@@ -1,0 +1,20 @@
+APOCTRL DATABASE SPECIFICATION V1.0
+
+Tabellen:
+users
+products
+competitors
+price_snapshots
+own_price_snapshots
+suggestions
+alerts
+audit_logs
+import_logs
+export_logs
+
+Grundsätze:
+- SQLite
+- PDO
+- Prepared Statements
+- Historisierung statt Überschreiben
+- created_at / updated_at wo sinnvoll
