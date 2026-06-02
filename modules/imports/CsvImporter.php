@@ -114,6 +114,7 @@ class CsvImporter
      *   imported: int,
      *   errors: int,
      *   createdProducts: int,
+     *   touchedProductIds: list<int>,
      *   errorRows: list<array{line: int, message: string}>
      * }
      */
@@ -125,6 +126,7 @@ class CsvImporter
         $imported = 0;
         $errors = 0;
         $createdProducts = 0;
+        $touchedProductIds = [];
         $errorRows = [];
 
         foreach ($preview['rows'] as $row) {
@@ -169,6 +171,7 @@ class CsvImporter
                 is_string($data['availability'] ?? null) ? $data['availability'] : null
             );
             $imported++;
+            $touchedProductIds[$productId] = $productId;
         }
 
         $total = count($preview['rows']);
@@ -193,6 +196,7 @@ class CsvImporter
             'imported' => $imported,
             'errors' => $errors,
             'createdProducts' => $createdProducts,
+            'touchedProductIds' => array_values($touchedProductIds),
             'errorRows' => $errorRows,
         ];
     }

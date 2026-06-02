@@ -6,6 +6,8 @@ require_once dirname(__DIR__) . '/core/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/imports/ImportValidator.php';
 require_once dirname(__DIR__) . '/modules/imports/ImportRepository.php';
 require_once dirname(__DIR__) . '/modules/imports/CsvImporter.php';
+require_once dirname(__DIR__) . '/modules/rankings/RankingRepository.php';
+require_once dirname(__DIR__) . '/modules/rankings/RankingEngine.php';
 
 Auth::requireAuth($config['session']['timeout']);
 
@@ -90,6 +92,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             $importResult = $importer->importPreview($sessionPreview, (int) $user['id']);
+
+            $rankingRepository = new RankingRepository(Database::getConnection());
+            $rankingEngine = new RankingEngine($rankingRepository);
+            foreach (($importResult['touchedProductIds'] ?? []) as $productId) {
+                $rankingEngine->runForProduct((int) $productId);
+            }
+            Auth::logAudit(
+                (int) $user['id'],
+                'ranking_run_after_import',
+                'Rankinglauf nach Import für Produkte: ' . implode(',', $importResult['touchedProductIds'] ?? [])
+            );
+
             $_SESSION['imports_result'] = $importResult;
             unset($_SESSION['imports_preview']);
             flash('success', 'Import wurde ausgeführt.');

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 class CompetitorValidator
 {
+    public function __construct(private readonly CompetitorRepository $repository)
+    {
+    }
+
     /**
      * @param array<string, mixed> $input
      * @return array{data: array<string, mixed>, errors: list<string>}
      */
-    public function validate(array $input): array
+    public function validate(array $input, ?int $excludeId = null): array
     {
         $errors = [];
 
@@ -18,6 +22,8 @@ class CompetitorValidator
 
         if ($name === '') {
             $errors[] = 'Name ist ein Pflichtfeld.';
+        } elseif ($this->repository->existsByName($name, $excludeId)) {
+            $errors[] = 'Ein Wettbewerber mit diesem Namen existiert bereits.';
         }
 
         if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL) === false) {

@@ -637,6 +637,15 @@ body {
     background: var(--color-border);
 }
 
+.btn-danger {
+    background: #b91c1c;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #991b1b;
+}
+
 .btn-sm {
     padding: 0.35rem 0.75rem;
     font-size: 0.8125rem;

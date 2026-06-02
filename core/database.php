@@ -82,6 +82,7 @@ class Database
     {
         self::addColumnIfNotExists($pdo, 'competitors', 'notes', 'TEXT');
         self::addColumnIfNotExists($pdo, 'import_logs', 'status', "TEXT NOT NULL DEFAULT 'running'");
+        self::ensureUniqueCompetitorNameIndex($pdo);
     }
 
     private static function addColumnIfNotExists(PDO $pdo, string $table, string $column, string $definition): void
@@ -96,6 +97,28 @@ class Database
         }
 
         $pdo->exec(sprintf('ALTER TABLE %s ADD COLUMN %s %s', $table, $column, $definition));
+    }
+
+    private static function ensureUniqueCompetitorNameIndex(PDO $pdo): void
+    {
+        $duplicates = (int) $pdo->query(
+            "SELECT COUNT(*) FROM (
+                SELECT LOWER(TRIM(name)) AS n
+                FROM competitors
+                GROUP BY LOWER(TRIM(name))
+                HAVING COUNT(*) > 1
+            ) t"
+        )->fetchColumn();
+
+        if ($duplicates > 0) {
+            logError('Unique-Index competitors.name übersprungen: vorhandene Duplikate.');
+            return;
+        }
+
+        $pdo->exec(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_competitors_name_unique
+             ON competitors (LOWER(TRIM(name)))'
+        );
     }
 
     /**

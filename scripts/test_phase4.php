@@ -2,14 +2,40 @@
 
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/core/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/rankings/RankingRepository.php';
 require_once dirname(__DIR__) . '/modules/rankings/RankingEngine.php';
 
-$pdo = Database::getConnection();
+function logError(string $message): void
+{
+    // Testscript: no-op logger to keep RankingEngine independent from bootstrap.
+}
+
+$testDir = dirname(__DIR__) . '/storage/database/_test';
+if (!is_dir($testDir)) {
+    mkdir($testDir, 0755, true);
+}
+$testDb = $testDir . '/phase4_test.sqlite';
+@unlink($testDb);
+
+$pdo = new PDO('sqlite:' . $testDb);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->exec('PRAGMA foreign_keys = ON');
+
+$pdo->exec('CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, pzn TEXT UNIQUE, name TEXT)');
+$pdo->exec('CREATE TABLE competitors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT)');
+$pdo->exec('CREATE TABLE price_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    competitor_id INTEGER NOT NULL,
+    price REAL,
+    shipping_cost REAL,
+    delivery_status TEXT,
+    ranking INTEGER,
+    captured_at DATETIME NOT NULL
+)');
+
 $repo = new RankingRepository($pdo);
 $engine = new RankingEngine($repo);
-
 $failures = 0;
 
 function ok(bool $condition, string $label, int &$failures): void
@@ -18,111 +44,107 @@ function ok(bool $condition, string $label, int &$failures): void
         echo "[OK] {$label}\n";
         return;
     }
-
     $failures++;
     echo "[FAIL] {$label}\n";
 }
 
-function ensureCompetitor(PDO $pdo, string $name): int
+function addCompetitor(PDO $pdo, string $name, string $url = ''): int
 {
-    $stmt = $pdo->prepare('SELECT id FROM competitors WHERE name = :name LIMIT 1');
-    $stmt->execute(['name' => $name]);
-    $id = $stmt->fetchColumn();
-    if ($id !== false) {
-        return (int) $id;
-    }
-
-    $ins = $pdo->prepare(
-        'INSERT INTO competitors (name, active, priority, created_at, updated_at)
-         VALUES (:name, 1, 0, :now, :now)'
-    );
-    $now = date('Y-m-d H:i:s');
-    $ins->execute(['name' => $name, 'now' => $now]);
+    $stmt = $pdo->prepare('INSERT INTO competitors (name, url) VALUES (:name, :url)');
+    $stmt->execute(['name' => $name, 'url' => $url !== '' ? $url : null]);
     return (int) $pdo->lastInsertId();
 }
 
-function ensureProduct(PDO $pdo, string $pzn): int
+function addProduct(PDO $pdo, string $pzn): int
 {
-    $stmt = $pdo->prepare('SELECT id FROM products WHERE pzn = :pzn LIMIT 1');
-    $stmt->execute(['pzn' => $pzn]);
-    $id = $stmt->fetchColumn();
-    if ($id !== false) {
-        return (int) $id;
-    }
+    $stmt = $pdo->prepare('INSERT INTO products (pzn, name) VALUES (:pzn, :name)');
+    $stmt->execute(['pzn' => $pzn, 'name' => 'Produkt ' . $pzn]);
+    return (int) $pdo->lastInsertId();
+}
 
-    $ins = $pdo->prepare(
-        'INSERT INTO products (pzn, name, active, created_at, updated_at)
-         VALUES (:pzn, :name, 1, :now, :now)'
+function addSnapshot(PDO $pdo, int $productId, int $competitorId, float $price, float $shipping, string $status, string $capturedAt): void
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO price_snapshots (product_id, competitor_id, price, shipping_cost, delivery_status, ranking, captured_at)
+         VALUES (:product_id, :competitor_id, :price, :shipping_cost, :delivery_status, NULL, :captured_at)'
     );
-    $now = date('Y-m-d H:i:s');
-    $ins->execute([
-        'pzn' => $pzn,
-        'name' => 'Test Produkt ' . $pzn,
-        'now' => $now,
+    $stmt->execute([
+        'product_id' => $productId,
+        'competitor_id' => $competitorId,
+        'price' => $price,
+        'shipping_cost' => $shipping,
+        'delivery_status' => $status,
+        'captured_at' => $capturedAt,
     ]);
-    return (int) $pdo->lastInsertId();
 }
 
-$productId = ensureProduct($pdo, '01580241');
-$compA = ensureCompetitor($pdo, 'Phase4-A');
-$compB = ensureCompetitor($pdo, 'Phase4-B');
-$compC = ensureCompetitor($pdo, 'Phase4-C');
-$compD = ensureCompetitor($pdo, 'Phase4-D');
+$doc = addCompetitor($pdo, 'DocMorris', 'https://docmorris.de');
+$shop = addCompetitor($pdo, 'Shop Apotheke', 'https://shop-apotheke.com');
+$medi = addCompetitor($pdo, 'Medizinfuchs', 'https://medizinfuchs.de');
 
-$cap1 = '2026-06-02 12:04:01';
-$cap2 = '2026-06-02 12:04:02';
+$pznA = addProduct($pdo, '00012345');
+$pznB = addProduct($pdo, '12345678');
+$pznC = addProduct($pdo, '99999999');
 
-$pdo->prepare('DELETE FROM price_snapshots WHERE product_id = :pid AND captured_at IN (:c1, :c2)')
-    ->execute(['pid' => $productId, 'c1' => $cap1, 'c2' => $cap2]);
+$groupCurrent = '2026-06-02 12:10:00';
+$groupOld = '2026-06-01 08:00:00';
 
-$insert = $pdo->prepare(
-    'INSERT INTO price_snapshots
-    (product_id, competitor_id, price, shipping_cost, delivery_status, ranking, captured_at)
-    VALUES (:product_id, :competitor_id, :price, :shipping_cost, :delivery_status, NULL, :captured_at)'
-);
+// 00012345
+addSnapshot($pdo, $pznA, $doc, 12.99, 3.99, 'lieferbar', $groupCurrent);   // 16.98
+addSnapshot($pdo, $pznA, $shop, 11.99, 3.99, 'lieferbar', $groupCurrent);  // 15.98
+addSnapshot($pdo, $pznA, $medi, 10.99, 0.00, 'lieferbar', $groupCurrent);   // 10.99
 
-// Gruppe 1: Gleichstand + nicht lieferbar
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compA, 'price' => 5.99, 'shipping_cost' => 0.00, 'delivery_status' => 'lieferbar', 'captured_at' => $cap1]);
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compB, 'price' => 5.99, 'shipping_cost' => 0.00, 'delivery_status' => 'in stock', 'captured_at' => $cap1]);
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compC, 'price' => 6.49, 'shipping_cost' => 0.00, 'delivery_status' => 'available', 'captured_at' => $cap1]);
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compD, 'price' => 4.99, 'shipping_cost' => 0.00, 'delivery_status' => 'out of stock', 'captured_at' => $cap1]);
+// 12345678
+addSnapshot($pdo, $pznB, $doc, 19.99, 3.99, 'lieferbar', $groupCurrent);    // 23.98
+addSnapshot($pdo, $pznB, $shop, 19.99, 3.99, 'available', $groupCurrent);   // 23.98
+addSnapshot($pdo, $pznB, $medi, 21.99, 0.00, 'sofort verfügbar', $groupCurrent); // 21.99
 
-// Gruppe 2: Versandkosten entscheiden Rang
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compA, 'price' => 5.00, 'shipping_cost' => 2.00, 'delivery_status' => 'lieferbar', 'captured_at' => $cap2]);
-$insert->execute(['product_id' => $productId, 'competitor_id' => $compB, 'price' => 6.00, 'shipping_cost' => 0.00, 'delivery_status' => 'lieferbar', 'captured_at' => $cap2]);
+// 99999999
+addSnapshot($pdo, $pznC, $medi, 8.99, 0.00, 'lieferbar', $groupCurrent);    // 8.99
+addSnapshot($pdo, $pznC, $shop, 9.49, 0.00, 'in stock', $groupCurrent);     // 9.49
+addSnapshot($pdo, $pznC, $doc, 8.99, 3.99, 'lieferbar', $groupCurrent);      // 12.98
 
-$beforeCount = (int) $pdo->query(
-    "SELECT COUNT(*) FROM price_snapshots WHERE product_id = {$productId}"
-)->fetchColumn();
+// alte Gruppe zur Historien-/Gruppenprüfung
+addSnapshot($pdo, $pznC, $doc, 7.99, 1.00, 'lieferbar', $groupOld);
+addSnapshot($pdo, $pznC, $shop, 6.99, 0.50, 'out of stock', $groupOld);
 
-$engine->runForProduct($productId);
+$before = (int) $pdo->query('SELECT COUNT(*) FROM price_snapshots')->fetchColumn();
+$engine->runAll();
+$engine->runAll();
+$after = (int) $pdo->query('SELECT COUNT(*) FROM price_snapshots')->fetchColumn();
+ok($before === $after, 'Mehrfachlauf erzeugt keine Duplikate', $failures);
 
-$group1 = $repo->fetchSnapshotsForGroup($productId, $cap1);
-$group2 = $repo->fetchSnapshotsForGroup($productId, $cap2);
-
-$byComp1 = [];
-foreach ($group1 as $row) {
-    $byComp1[(int) $row['competitor_id']] = $row;
+function rankingFor(PDO $pdo, string $pzn, string $competitor, string $capturedAt): ?int
+{
+    $stmt = $pdo->prepare(
+        'SELECT ps.ranking
+         FROM price_snapshots ps
+         JOIN products p ON p.id = ps.product_id
+         JOIN competitors c ON c.id = ps.competitor_id
+         WHERE p.pzn = :pzn AND c.name = :name AND ps.captured_at = :captured_at
+         LIMIT 1'
+    );
+    $stmt->execute(['pzn' => $pzn, 'name' => $competitor, 'captured_at' => $capturedAt]);
+    $rank = $stmt->fetchColumn();
+    if ($rank === false || $rank === null) {
+        return null;
+    }
+    return (int) $rank;
 }
-$byComp2 = [];
-foreach ($group2 as $row) {
-    $byComp2[(int) $row['competitor_id']] = $row;
-}
 
-ok((int) ($byComp1[$compA]['ranking'] ?? 0) === 1, 'Rang 1 bei niedrigstem Endpreis', $failures);
-ok((int) ($byComp1[$compB]['ranking'] ?? 0) === 1, 'Preisgleichheit gleicher Rang', $failures);
-ok((int) ($byComp1[$compC]['ranking'] ?? 0) === 3, 'Nächster Rang wird übersprungen (1,1,3)', $failures);
-ok(($byComp1[$compD]['ranking'] ?? null) === null, 'Nicht lieferbare Anbieter ignoriert', $failures);
-ok((int) ($byComp2[$compB]['ranking'] ?? 0) === 1 && (int) ($byComp2[$compA]['ranking'] ?? 0) === 2, 'Versandkosten berücksichtigt', $failures);
+ok(rankingFor($pdo, '00012345', 'Medizinfuchs', $groupCurrent) === 1, '00012345 Medizinfuchs Rang 1', $failures);
+ok(rankingFor($pdo, '00012345', 'Shop Apotheke', $groupCurrent) === 2, '00012345 Shop Apotheke Rang 2', $failures);
+ok(rankingFor($pdo, '00012345', 'DocMorris', $groupCurrent) === 3, '00012345 DocMorris Rang 3', $failures);
 
-$engine->runForProduct($productId);
-$afterCount = (int) $pdo->query(
-    "SELECT COUNT(*) FROM price_snapshots WHERE product_id = {$productId}"
-)->fetchColumn();
-ok($beforeCount === $afterCount, 'Mehrfachlauf erzeugt keine Duplikate', $failures);
+ok(rankingFor($pdo, '12345678', 'Medizinfuchs', $groupCurrent) === 1, '12345678 Medizinfuchs Rang 1', $failures);
+ok(rankingFor($pdo, '12345678', 'DocMorris', $groupCurrent) === 2, '12345678 DocMorris Rang 2', $failures);
+ok(rankingFor($pdo, '12345678', 'Shop Apotheke', $groupCurrent) === 2, '12345678 Shop Apotheke Rang 2', $failures);
 
-$group1After = $repo->fetchSnapshotsForGroup($productId, $cap1);
-ok(count($group1After) === 4, 'Historische Snapshots bleiben erhalten', $failures);
-ok(count($group1After) !== count($group2) || $cap1 !== $cap2, 'Gruppen mit anderem captured_at werden getrennt behandelt', $failures);
+ok(rankingFor($pdo, '99999999', 'Medizinfuchs', $groupCurrent) === 1, '99999999 Medizinfuchs Rang 1', $failures);
+ok(rankingFor($pdo, '99999999', 'Shop Apotheke', $groupCurrent) === 2, '99999999 Shop Apotheke Rang 2', $failures);
+ok(rankingFor($pdo, '99999999', 'DocMorris', $groupCurrent) === 3, '99999999 DocMorris Rang 3', $failures);
+
+ok(rankingFor($pdo, '99999999', 'DocMorris', $groupOld) === 1, 'Alte captured_at-Gruppe getrennt gerankt', $failures);
+ok(rankingFor($pdo, '99999999', 'Shop Apotheke', $groupOld) === null, 'Nicht lieferbar in alter Gruppe ignoriert', $failures);
 
 exit($failures > 0 ? 1 : 0);

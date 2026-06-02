@@ -3,14 +3,39 @@
 declare(strict_types=1);
 
 /** @var list<array<string, mixed>> $competitors */
+/** @var list<array{name:string,count:int,ids:string}> $duplicates */
 ?>
 <div class="page-header page-header-row">
     <div>
         <h1>Wettbewerber</h1>
         <p class="page-subtitle"><?= count($competitors) ?> Wettbewerber</p>
     </div>
-    <a href="competitors.php?action=create" class="btn btn-primary">Neuer Wettbewerber</a>
+    <div class="actions-cell">
+        <a href="competitors.php?action=create" class="btn btn-primary">Neuer Wettbewerber</a>
+        <form method="post" action="competitors.php" class="inline-form">
+            <?= Csrf::field() ?>
+            <input type="hidden" name="action" value="cleanup-competitors">
+            <button
+                type="submit"
+                class="btn btn-secondary"
+                onclick="return confirm('Phase4-Testdaten löschen und DocMorris-Duplikate zusammenführen?');"
+            >
+                Bereinigung ausführen
+            </button>
+        </form>
+    </div>
 </div>
+
+<?php if ($duplicates !== []): ?>
+    <div class="alert alert-warning" role="alert">
+        <strong>Duplikate gefunden:</strong>
+        <?php foreach ($duplicates as $dup): ?>
+            <div>
+                <?= e($dup['name']) ?> (<?= (int) $dup['count'] ?>x, IDs: <?= e($dup['ids']) ?>)
+            </div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
 <div class="panel">
     <div class="table-wrap">
@@ -69,6 +94,18 @@ declare(strict_types=1);
                                         <button type="submit" class="btn btn-primary btn-sm">Aktivieren</button>
                                     </form>
                                 <?php endif; ?>
+                                <form method="post" action="competitors.php" class="inline-form">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= (int) $competitor['id'] ?>">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Wettbewerber wirklich löschen?');"
+                                    >
+                                        Löschen
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
