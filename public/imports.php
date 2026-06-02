@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Die Datei ist größer als 10 MB.');
             }
 
-            if (!isAllowedCsvUpload($originalName, $tmpPath)) {
+            if (!isAllowedCsvUpload($originalName, $tmpPath, (int) $user['id'])) {
                 throw new RuntimeException('Nur CSV-Dateien (UTF-8) sind erlaubt.');
             }
 
@@ -123,7 +123,7 @@ function sanitizeCsvFilename(string $filename): string
     return $base;
 }
 
-function isAllowedCsvUpload(string $filename, string $tmpPath): bool
+function isAllowedCsvUpload(string $filename, string $tmpPath, int $userId): bool
 {
     $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     if ($extension !== 'csv') {
@@ -134,8 +134,22 @@ function isAllowedCsvUpload(string $filename, string $tmpPath): bool
         return false;
     }
 
+    if (!extension_loaded('fileinfo') || !function_exists('finfo_open')) {
+        Auth::logAudit(
+            $userId,
+            'import_fileinfo_fallback',
+            'fileinfo-Erweiterung fehlt; CSV-Prüfung nur über Dateiendung'
+        );
+        return true;
+    }
+
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     if ($finfo === false) {
+        Auth::logAudit(
+            $userId,
+            'import_fileinfo_fallback',
+            'finfo_open fehlgeschlagen; CSV-Prüfung nur über Dateiendung'
+        );
         return true;
     }
     $mime = finfo_file($finfo, $tmpPath) ?: '';
