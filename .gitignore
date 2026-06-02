@@ -2,13 +2,18 @@
 /config/config.php
 
 # SQLite-Datenbank
+*.sqlite
 /storage/database/*.sqlite
+/storage/database/**/*.sqlite
 /storage/database/*.sqlite-journal
 /storage/database/*.sqlite-wal
 /storage/database/*.sqlite-shm
 
 # Logs
-/storage/logs/*.log
+/storage/logs/*
+/storage/imports/*
+/storage/exports/*
+/storage/backups/*
 
 # IDE / OS
 .idea/
