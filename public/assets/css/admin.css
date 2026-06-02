@@ -448,6 +448,14 @@ body {
     min-width: 200px;
 }
 
+.toolbar-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    min-width: 200px;
+}
+
 .table-wrap {
     overflow-x: auto;
 }

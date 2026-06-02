@@ -64,6 +64,15 @@ class CsvImporter
             }
 
             $validated = $this->validator->validateRow($rawRow, $headerMap);
+
+            if ($validated['errors'] === []) {
+                $competitorName = (string) ($validated['data']['competitor'] ?? '');
+                $competitor = $this->repository->findCompetitorByName($competitorName);
+                if ($competitor === null) {
+                    $validated['errors'][] = 'Unbekannter Wettbewerber: ' . $competitorName;
+                }
+            }
+
             $rows[] = [
                 'line' => $lineNumber,
                 'raw' => $rawRow,
