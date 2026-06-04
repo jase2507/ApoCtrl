@@ -21,7 +21,8 @@ class MedizinfuchsCollector
      *   pzn:string,
      *   snapshots_created:int,
      *   competitors_seen:int,
-     *   message:string
+     *   message:string,
+     *   parse_debug?:array{product:array<string,string|null>,offers:list<array<string,mixed>>}
      * }
      */
     public function setRunId(?int $runId): void
@@ -57,7 +58,15 @@ class MedizinfuchsCollector
         }
 
         if ($offers === []) {
-            return $this->result($productId, $pzn, false, 0, 0, 'Keine Angebote im Abruf gefunden.');
+            return $this->result(
+                $productId,
+                $pzn,
+                false,
+                0,
+                0,
+                'Keine Angebote im Abruf gefunden.',
+                $this->parser->getLastParseDebug(),
+            );
         }
 
         $ownCompetitor = $this->collectorRepository->getOwnCompetitor();
@@ -126,17 +135,20 @@ class MedizinfuchsCollector
             $snapshotsCreated,
             $competitorsSeen,
             $snapshotsCreated . ' Snapshot(s), Ranking aktualisiert.',
+            $this->parser->getLastParseDebug(),
         );
     }
 
     /**
+     * @param array{product:array<string,string|null>,offers:list<array<string,mixed>>}|null $parseDebug
      * @return array{
      *   success:bool,
      *   product_id:int,
      *   pzn:string,
      *   snapshots_created:int,
      *   competitors_seen:int,
-     *   message:string
+     *   message:string,
+     *   parse_debug?:array{product:array<string,string|null>,offers:list<array<string,mixed>>}
      * }
      */
     /**
@@ -176,8 +188,9 @@ class MedizinfuchsCollector
         int $snapshotsCreated,
         int $competitorsSeen,
         string $message,
+        ?array $parseDebug = null,
     ): array {
-        return [
+        $payload = [
             'success' => $success,
             'product_id' => $productId,
             'pzn' => $pzn,
@@ -185,5 +198,11 @@ class MedizinfuchsCollector
             'competitors_seen' => $competitorsSeen,
             'message' => $message,
         ];
+
+        if ($parseDebug !== null && ($parseDebug['offers'] ?? []) !== []) {
+            $payload['parse_debug'] = $parseDebug;
+        }
+
+        return $payload;
     }
 }

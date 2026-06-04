@@ -21,6 +21,7 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         private readonly int $cacheTtlMinutes,
         private readonly string $userAgent,
         private readonly bool $allowInsecureSsl,
+        private readonly bool $fetchAjaxOffers = true,
         private readonly ?CollectorRepository $logRepository = null,
     ) {
     }
@@ -118,6 +119,10 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             $httpCode = (int) ($response['http_code'] ?? 0);
             $html = (string) ($response['html'] ?? '');
 
+            if ($this->fetchAjaxOffers) {
+                $html = $this->enrichWithAjaxOffers($html, $url);
+            }
+
             $httpRejected = $httpCode > 0 && ($httpCode < 200 || $httpCode >= 400);
             if ($html === '' || $httpRejected) {
                 $message = (string) ($response['error'] ?? 'Leere oder ungültige HTTP-Antwort.');
@@ -167,6 +172,119 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             logError('Collector Live PZN ' . $pzn . ': ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    private function enrichWithAjaxOffers(string $html, string $pageUrl): string
+    {
+        if (!function_exists('curl_init')) {
+            return $html;
+        }
+
+        $ppnId = $this->extractProductPpnId($html);
+        if ($ppnId === null) {
+            return $html;
+        }
+
+        $this->enforceRateLimit();
+
+        $cookieFile = tempnam(sys_get_temp_dir(), 'mf_col_');
+        if ($cookieFile === false) {
+            return $html;
+        }
+
+        try {
+            $ch = curl_init($pageUrl);
+            if ($ch === false) {
+                return $html;
+            }
+
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
+                CURLOPT_TIMEOUT => $this->timeoutSeconds,
+                CURLOPT_USERAGENT => $this->userAgent,
+                CURLOPT_COOKIEJAR => $cookieFile,
+                CURLOPT_COOKIEFILE => $cookieFile,
+                CURLOPT_SSL_VERIFYPEER => !$this->allowInsecureSsl,
+                CURLOPT_SSL_VERIFYHOST => $this->allowInsecureSsl ? 0 : 2,
+            ]);
+            curl_exec($ch);
+            unset($ch);
+
+            $cookieContent = (string) file_get_contents($cookieFile);
+            if (preg_match('/product_history\s+([0-9]+)/', $cookieContent, $m) === 1) {
+                $ppnId = $m[1];
+            }
+
+            $ajaxHtml = $this->fetchAjaxApothekenHtml($ppnId, $cookieFile);
+            if ($ajaxHtml === '') {
+                return $html;
+            }
+
+            return $html . "\n<!-- apoctrl-mf-ajax -->\n" . $ajaxHtml;
+        } finally {
+            @unlink($cookieFile);
+        }
+    }
+
+    private function extractProductPpnId(string $html): ?string
+    {
+        if (preg_match('/data-ppn=["\']([0-9]+)["\']/i', $html, $m) === 1) {
+            return $m[1];
+        }
+
+        if (preg_match('/params\[ppn\]\s*=\s*["\']?([0-9]+)/i', $html, $m) === 1) {
+            return $m[1];
+        }
+
+        if (preg_match('/"ppn"\s*:\s*"?([0-9]+)"?/i', $html, $m) === 1) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    private function fetchAjaxApothekenHtml(string $ppnId, string $cookieFile): string
+    {
+        $ch = curl_init('https://www.medizinfuchs.de/ajax_apotheken');
+        if ($ch === false) {
+            return '';
+        }
+
+        $post = [
+            'params[ppn]' => $ppnId,
+            'params[entry_order]' => 'single_asc',
+            'params[filter][rating]' => '',
+            'params[filter][country]' => 7,
+            'params[filter][favorit]' => 0,
+            'params[filter][products_from][de]' => 0,
+            'params[filter][products_from][at]' => 0,
+            'params[filter][send]' => 1,
+            'params[limit]' => 300,
+            'params[merkzettel_sel]' => '',
+            'params[merkzettel_reload]' => '',
+            'params[apo_id]' => '',
+        ];
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($post),
+            CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
+            CURLOPT_TIMEOUT => $this->timeoutSeconds,
+            CURLOPT_USERAGENT => $this->userAgent,
+            CURLOPT_HTTPHEADER => ['Accept: text/html', 'Connection: close'],
+            CURLOPT_COOKIEJAR => $cookieFile,
+            CURLOPT_COOKIEFILE => $cookieFile,
+            CURLOPT_SSL_VERIFYPEER => !$this->allowInsecureSsl,
+            CURLOPT_SSL_VERIFYHOST => $this->allowInsecureSsl ? 0 : 2,
+        ]);
+
+        $ajax = curl_exec($ch);
+        unset($ch);
+
+        return is_string($ajax) ? $ajax : '';
     }
 
     private function buildUrl(string $pzn): string

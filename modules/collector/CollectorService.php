@@ -122,7 +122,7 @@ class CollectorService
             'status' => $status,
         ]);
 
-        return [
+        $response = [
             'run_id' => $runId,
             'success' => $result['success'],
             'product_id' => (int) $result['product_id'],
@@ -130,6 +130,12 @@ class CollectorService
             'snapshots_created' => (int) $result['snapshots_created'],
             'message' => (string) $result['message'],
         ];
+
+        if (isset($result['parse_debug']) && is_array($result['parse_debug'])) {
+            $response['parse_debug'] = $result['parse_debug'];
+        }
+
+        return $response;
     }
 
     public function getLastRun(): ?array

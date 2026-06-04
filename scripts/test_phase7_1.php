@@ -47,6 +47,7 @@ function makeLiveProvider(
         15,
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ApoCtrl Collector Test',
         false,
+        false,
         new CollectorRepository($pdo),
     );
 }

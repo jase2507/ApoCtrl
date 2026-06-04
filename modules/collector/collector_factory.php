@@ -38,6 +38,10 @@ if (!function_exists('createCollectorService')) {
             $collectorConfig['allow_insecure_ssl'] ?? false,
             FILTER_VALIDATE_BOOL,
         );
+        $fetchAjaxOffers = filter_var(
+            $collectorConfig['fetch_ajax_offers'] ?? true,
+            FILTER_VALIDATE_BOOL,
+        );
 
         $collectorRepo = new CollectorRepository($pdo);
         $snapshotService = new SnapshotService(new SnapshotRepository($pdo));
@@ -53,6 +57,7 @@ if (!function_exists('createCollectorService')) {
             max(1, $cacheTtlMinutes),
             $userAgent,
             $allowInsecureSsl,
+            $fetchAjaxOffers,
             $collectorRepo,
         );
         $medCollector = new MedizinfuchsCollector(

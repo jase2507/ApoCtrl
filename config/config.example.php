@@ -73,7 +73,9 @@ return [
         'timeout' => 15,
         'fetch_timeout' => 15,
         'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ApoCtrl Collector',
-        'medizinfuchs_url_template' => 'https://www.medizinfuchs.de/pzn/{PZN}',
+        // Slug-URL mit PZN-Suffix (z. B. aus Produktdaten); alternativ Suche anpassen
+        'medizinfuchs_url_template' => 'https://www.medizinfuchs.de/preisvergleich/produkt-pzn-{PZN}.html',
+        'fetch_ajax_offers' => true,
         'allow_insecure_ssl' => false,
         'debug' => false,
     ],

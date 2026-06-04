@@ -9,6 +9,8 @@ declare(strict_types=1);
 /** @var array<string, mixed>|null $runSummary */
 /** @var list<array<string, mixed>> $latestLogs */
 /** @var bool $collectorDebug */
+/** @var array<string, mixed>|null $parseDebug */
+$parseDebug = is_array($singleResult ?? null) ? ($singleResult['parse_debug'] ?? null) : null;
 ?>
 <div class="page-header page-header-row">
     <div>
@@ -84,6 +86,52 @@ declare(strict_types=1);
                     PZN <?= e((string) ($singleResult['pzn'] ?? '')) ?>:
                     <?= e((string) ($singleResult['message'] ?? '')) ?>
                     (<?= (int) ($singleResult['snapshots_created'] ?? 0) ?> Snapshot(s))
+                </div>
+            <?php endif; ?>
+            <?php if ($collectorDebug && is_array($parseDebug)): ?>
+                <?php $productInfo = is_array($parseDebug['product'] ?? null) ? $parseDebug['product'] : []; ?>
+                <?php $parsedOffers = is_array($parseDebug['offers'] ?? null) ? $parseDebug['offers'] : []; ?>
+                <div class="panel" style="margin-top:1rem;">
+                    <div class="panel-header"><h3>Parser-Debug</h3></div>
+                    <div class="panel-body">
+                        <?php if ($productInfo !== []): ?>
+                            <dl class="detail-dl">
+                                <?php foreach (['name' => 'Produkt', 'manufacturer' => 'Hersteller', 'pzn' => 'PZN', 'uvp' => 'UVP', 'package_size' => 'Packung'] as $key => $label): ?>
+                                    <?php if (!empty($productInfo[$key])): ?>
+                                        <dt><?= e($label) ?></dt>
+                                        <dd><?= e((string) $productInfo[$key]) ?></dd>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </dl>
+                        <?php endif; ?>
+                        <?php if ($parsedOffers !== []): ?>
+                            <h4>Gefundene Anbieter</h4>
+                            <div class="table-wrap">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Preis</th>
+                                            <th>Versand</th>
+                                            <th>Gesamt</th>
+                                            <th>Lieferstatus</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($parsedOffers as $offer): ?>
+                                            <tr>
+                                                <td><?= e((string) ($offer['competitor_name'] ?? '')) ?></td>
+                                                <td><?= number_format((float) ($offer['price'] ?? 0), 2, ',', '.') ?> €</td>
+                                                <td><?= number_format((float) ($offer['shipping_cost'] ?? 0), 2, ',', '.') ?> €</td>
+                                                <td><?= number_format((float) ($offer['total_price'] ?? 0), 2, ',', '.') ?> €</td>
+                                                <td><?= e((string) ($offer['delivery_status'] ?? '')) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>
