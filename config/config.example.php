@@ -63,4 +63,11 @@ return [
         'fetch_timeout' => 15,
         'own_competitor_name' => 'Eigener Shop',
     ],
+
+    'collector' => [
+        // true = lokale HTML-Fixtures unter docs/examples/medizinfuchs_collector_{PZN}.html
+        'mock_mode' => true,
+        'fetch_timeout' => 15,
+        'medizinfuchs_url_template' => 'https://www.medizinfuchs.de/pzn/{PZN}',
+    ],
 ];

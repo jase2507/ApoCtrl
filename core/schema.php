@@ -134,4 +134,15 @@ CREATE TABLE IF NOT EXISTS export_logs (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 SQL,
+    <<<'SQL'
+CREATE TABLE IF NOT EXISTS collector_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at DATETIME NOT NULL,
+    finished_at DATETIME,
+    products_processed INTEGER DEFAULT 0,
+    snapshots_created INTEGER DEFAULT 0,
+    errors INTEGER DEFAULT 0,
+    status TEXT NOT NULL
+)
+SQL,
 ];

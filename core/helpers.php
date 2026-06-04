@@ -96,6 +96,7 @@ function navItems(): array
         'rankings' => ['label' => 'Rankings', 'url' => 'rankings.php', 'phase' => 4],
         'snapshots' => ['label' => 'Snapshots', 'url' => 'snapshots.php', 'phase' => 5],
         'suggestions' => ['label' => 'Preisvorschläge', 'url' => 'pricing.php', 'phase' => 6],
+        'collector' => ['label' => 'Datenerfassung', 'url' => 'collector.php', 'phase' => 7],
         'alerts' => ['label' => 'Alerts', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'reports' => ['label' => 'Reports', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'users' => ['label' => 'Benutzer', 'url' => '#', 'phase' => 2, 'disabled' => true],

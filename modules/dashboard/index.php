@@ -3,7 +3,14 @@
 declare(strict_types=1);
 
 /** @var array{observed_products:int,competitors:int,snapshots_today:int,snapshots_total:int,average_ranking:?float,products_needing_action:int} $dashboardStats */
+/** @var array<string,mixed>|null $lastCollectorRun */
 $avgRanking = $dashboardStats['average_ranking'] ?? null;
+$lastCollectionLabel = '—';
+if (is_array($lastCollectorRun) && !empty($lastCollectorRun['finished_at'])) {
+    $lastCollectionLabel = (string) $lastCollectorRun['finished_at'];
+} elseif (is_array($lastCollectorRun) && !empty($lastCollectorRun['started_at'])) {
+    $lastCollectionLabel = (string) $lastCollectorRun['started_at'] . ' (läuft)';
+}
 ?>
 <div class="page-header">
     <h1>Dashboard</h1>
@@ -40,6 +47,11 @@ $avgRanking = $dashboardStats['average_ranking'] ?? null;
         <span class="kpi-label">Produkte mit Handlungsbedarf</span>
         <span class="kpi-value"><?= (int) ($dashboardStats['products_needing_action'] ?? 0) ?></span>
         <span class="kpi-hint"><a href="pricing.php">Ist-Rang schlechter als Ziel</a></span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Letzte Datenerfassung</span>
+        <span class="kpi-value kpi-value-text"><?= e($lastCollectionLabel) ?></span>
+        <span class="kpi-hint"><a href="collector.php">Collector</a></span>
     </div>
 </div>
 

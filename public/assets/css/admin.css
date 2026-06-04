@@ -272,6 +272,11 @@ body {
     margin: 0;
 }
 
+.kpi-value-text {
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
 /* ── KPI Grid ── */
 
 .kpi-grid {

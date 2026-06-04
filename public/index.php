@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/core/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/snapshots/SnapshotRepository.php';
 require_once dirname(__DIR__) . '/modules/competitors/CompetitorRepository.php';
 require_once dirname(__DIR__) . '/modules/pricing/PricingRepository.php';
+require_once dirname(__DIR__) . '/modules/collector/CollectorRepository.php';
 
 Auth::requireAuth($config['session']['timeout']);
 
@@ -13,6 +14,8 @@ $pdo = Database::getConnection();
 $snapshotRepository = new SnapshotRepository($pdo);
 $competitorRepository = new CompetitorRepository($pdo);
 $pricingRepository = new PricingRepository($pdo);
+$collectorRepository = new CollectorRepository($pdo);
+$lastCollectorRun = $collectorRepository->getLastRun();
 
 $dashboardStats = [
     'observed_products' => $snapshotRepository->countObservedProducts(),
@@ -21,6 +24,7 @@ $dashboardStats = [
     'snapshots_total' => $snapshotRepository->countAll(),
     'average_ranking' => $snapshotRepository->averageRanking(),
     'products_needing_action' => $pricingRepository->countProductsNeedingAction(),
+    'last_collector_run' => $lastCollectorRun,
 ];
 
 $pageTitle = 'Dashboard';
@@ -33,4 +37,5 @@ renderLayout('modules/dashboard/index.php', compact(
     'user',
     'config',
     'dashboardStats',
+    'lastCollectorRun',
 ));
