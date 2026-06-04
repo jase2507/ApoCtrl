@@ -257,6 +257,21 @@ body {
     font-size: 0.9rem;
 }
 
+.detail-dl {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: 0.35rem 1rem;
+    margin: 0;
+}
+
+.detail-dl dt {
+    font-weight: 600;
+}
+
+.detail-dl dd {
+    margin: 0;
+}
+
 /* ── KPI Grid ── */
 
 .kpi-grid {

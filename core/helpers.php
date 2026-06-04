@@ -95,7 +95,7 @@ function navItems(): array
         'imports' => ['label' => 'Importe', 'url' => 'imports.php', 'phase' => 3],
         'rankings' => ['label' => 'Rankings', 'url' => 'rankings.php', 'phase' => 4],
         'snapshots' => ['label' => 'Snapshots', 'url' => 'snapshots.php', 'phase' => 5],
-        'suggestions' => ['label' => 'Preisvorschläge', 'url' => '#', 'phase' => 2, 'disabled' => true],
+        'suggestions' => ['label' => 'Preisvorschläge', 'url' => 'pricing.php', 'phase' => 6],
         'alerts' => ['label' => 'Alerts', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'reports' => ['label' => 'Reports', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'users' => ['label' => 'Benutzer', 'url' => '#', 'phase' => 2, 'disabled' => true],

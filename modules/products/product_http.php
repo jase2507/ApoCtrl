@@ -176,6 +176,7 @@ if (!function_exists('renderProductForm')) {
         bool $isEdit,
         array $pznAutofill,
         array $priceHistory = [],
+        ?array $priceSuggestion = null,
     ): void {
         renderLayout('modules/products/form.php', compact(
             'pageTitle',
@@ -188,6 +189,7 @@ if (!function_exists('renderProductForm')) {
             'isEdit',
             'pznAutofill',
             'priceHistory',
+            'priceSuggestion',
         ));
     }
 }

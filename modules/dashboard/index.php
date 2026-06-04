@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-/** @var array{observed_products:int,competitors:int,snapshots_today:int,snapshots_total:int,average_ranking:?float} $dashboardStats */
+/** @var array{observed_products:int,competitors:int,snapshots_today:int,snapshots_total:int,average_ranking:?float,products_needing_action:int} $dashboardStats */
 $avgRanking = $dashboardStats['average_ranking'] ?? null;
 ?>
 <div class="page-header">
@@ -35,6 +35,11 @@ $avgRanking = $dashboardStats['average_ranking'] ?? null;
         <span class="kpi-label">Durchschnittliches Ranking</span>
         <span class="kpi-value"><?= $avgRanking !== null ? e((string) $avgRanking) : '—' ?></span>
         <span class="kpi-hint">Über alle gerankten Snapshots</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Produkte mit Handlungsbedarf</span>
+        <span class="kpi-value"><?= (int) ($dashboardStats['products_needing_action'] ?? 0) ?></span>
+        <span class="kpi-hint"><a href="pricing.php">Ist-Rang schlechter als Ziel</a></span>
     </div>
 </div>
 

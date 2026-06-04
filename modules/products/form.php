@@ -8,7 +8,9 @@ declare(strict_types=1);
 /** @var bool $isEdit */
 /** @var array{status:string,message:string,hits:list<array<string,mixed>>}|null $pznAutofill */
 /** @var list<array<string,mixed>> $priceHistory */
+/** @var array<string,mixed>|null $priceSuggestion */
 $priceHistory ??= [];
+$priceSuggestion ??= null;
 
 $pznAutofill ??= ['status' => '', 'message' => '', 'hits' => []];
 $productRow = is_array($product) ? $product : [];
@@ -329,6 +331,31 @@ $deeplinkTemplate = (string) ($shopConfig['deeplink_template'] ?? 'https://shop.
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+<?php endif; ?>
+
+<?php if ($isEdit && is_array($priceSuggestion)): ?>
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Preisvorschlag</h2>
+        </div>
+        <div class="panel-body">
+            <dl class="detail-dl">
+                <dt>Aktueller Preis</dt>
+                <dd><?= e(formatMoney(isset($priceSuggestion['current_price']) ? (float) $priceSuggestion['current_price'] : null)) ?></dd>
+                <dt>Aktueller Rang</dt>
+                <dd><?= $priceSuggestion['current_rank'] !== null ? (int) $priceSuggestion['current_rank'] : '—' ?></dd>
+                <dt>Ziel-Rang</dt>
+                <dd><?= $priceSuggestion['target_rank'] !== null ? (int) $priceSuggestion['target_rank'] : '—' ?></dd>
+                <dt>Vorgeschlagener Preis</dt>
+                <dd><strong><?= e(formatMoney(isset($priceSuggestion['suggested_price']) ? (float) $priceSuggestion['suggested_price'] : null)) ?></strong></dd>
+                <dt>Mindestpreis</dt>
+                <dd><?= e(formatMoney(isset($priceSuggestion['minimum_price']) ? (float) $priceSuggestion['minimum_price'] : null)) ?></dd>
+                <dt>Begründung</dt>
+                <dd><?= e((string) ($priceSuggestion['reason'] ?? '—')) ?></dd>
+            </dl>
+            <p class="text-muted">Nur Anzeige – der Verkaufspreis wird nicht automatisch geändert.</p>
         </div>
     </div>
 <?php endif; ?>

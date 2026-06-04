@@ -16,6 +16,8 @@ require_once dirname(__DIR__) . '/modules/rankings/RankingRepository.php';
 require_once dirname(__DIR__) . '/modules/rankings/RankingEngine.php';
 require_once dirname(__DIR__) . '/modules/products/product_http.php';
 require_once dirname(__DIR__) . '/modules/snapshots/SnapshotRepository.php';
+require_once dirname(__DIR__) . '/modules/pricing/PricingRepository.php';
+require_once dirname(__DIR__) . '/modules/pricing/PricingEngine.php';
 
 Auth::requireAuth($config['session']['timeout']);
 
@@ -374,6 +376,7 @@ match ($action) {
 
         $snapshotRepository = new SnapshotRepository($pdo);
         $priceHistory = $snapshotRepository->findByProduct($id, 100);
+        $priceSuggestion = (new PricingEngine(new PricingRepository($pdo)))->suggestPrice($id);
 
         renderProductForm(
             'Produkt bearbeiten',
@@ -386,6 +389,7 @@ match ($action) {
             true,
             $pznAutofillEmpty,
             $priceHistory,
+            $priceSuggestion,
         );
     })(),
 
