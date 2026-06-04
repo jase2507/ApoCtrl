@@ -14,6 +14,87 @@ require_once dirname(__DIR__) . '/rankings/RankingRepository.php';
 require_once dirname(__DIR__) . '/rankings/RankingEngine.php';
 require_once __DIR__ . '/ProductAutofillMerger.php';
 
+if (!function_exists('createShopSyncService')) {
+    function createShopSyncService(
+        PDO $pdo,
+        ProductRepository $repository,
+        ShopUrlValidator $shopUrlValidator,
+        int $fetchTimeout,
+        string $ownCompetitorName,
+    ): ShopSyncService {
+        return new ShopSyncService(
+            $repository,
+            new OwnShopRepository($pdo, $ownCompetitorName),
+            $shopUrlValidator,
+            new ShopFetcher($fetchTimeout),
+            new ShopHtmlParser(),
+            new RankingEngine(new RankingRepository($pdo)),
+        );
+    }
+}
+
+if (!function_exists('productSavedDataToParsed')) {
+    /**
+     * @param array<string, mixed> $data
+     * @return array{
+     *   product_name:?string,
+     *   manufacturer:?string,
+     *   package_size:?string,
+     *   pzn:?string,
+     *   price:?float,
+     *   avp_price:?float,
+     *   delivery_status:?string
+     * }
+     */
+    function productSavedDataToParsed(array $data): array
+    {
+        $salePrice = $data['sale_price'] ?? null;
+
+        return [
+            'product_name' => isset($data['name']) ? (string) $data['name'] : null,
+            'manufacturer' => isset($data['manufacturer']) ? (string) $data['manufacturer'] : null,
+            'package_size' => isset($data['package_size']) ? (string) $data['package_size'] : null,
+            'pzn' => isset($data['pzn']) ? (string) $data['pzn'] : null,
+            'price' => $salePrice !== null && $salePrice !== '' ? (float) $salePrice : null,
+            'avp_price' => isset($data['avp_price']) && $data['avp_price'] !== null && $data['avp_price'] !== ''
+                ? (float) $data['avp_price']
+                : null,
+            'delivery_status' => 'lieferbar',
+        ];
+    }
+}
+
+if (!function_exists('bootstrapOwnShopSnapshotAfterSave')) {
+    /**
+     * Eigenen-Shop-Snapshot + Ranking nach dem Anlegen (PZN-Autofill ohne product_id).
+     *
+     * @param array<string, mixed> $savedData Ergebnis von ProductValidator / create()
+     * @return array{attempted:bool, success:bool, message:string}
+     */
+    function bootstrapOwnShopSnapshotAfterSave(
+        int $productId,
+        array $savedData,
+        ShopSyncService $shopSync,
+    ): array {
+        if ((int) ($savedData['active'] ?? 0) !== 1) {
+            return ['attempted' => false, 'success' => false, 'message' => ''];
+        }
+
+        $parsed = productSavedDataToParsed($savedData);
+        if ($parsed['price'] === null) {
+            return ['attempted' => false, 'success' => false, 'message' => ''];
+        }
+
+        $sync = $shopSync->syncProductFromParsed($productId, $parsed);
+
+        return [
+            'attempted' => true,
+            'success' => (bool) ($sync['success'] ?? false),
+            'message' => (string) ($sync['message'] ?? ''),
+        ];
+    }
+}
+
 if (!function_exists('createPznAutofillService')) {
     function createPznAutofillService(
         PDO $pdo,
@@ -31,16 +112,14 @@ if (!function_exists('createPznAutofillService')) {
         bool $htmlSearchFallback = false,
         string $storageRoot = '',
     ): PznAutofillService {
-        $fetcher = new ShopFetcher($fetchTimeout);
-        $rankingRepo = new RankingRepository($pdo);
-        $syncService = new ShopSyncService(
+        $syncService = createShopSyncService(
+            $pdo,
             $repository,
-            new OwnShopRepository($pdo, $ownCompetitorName),
             $shopUrlValidator,
-            $fetcher,
-            new ShopHtmlParser(),
-            new RankingEngine($rankingRepo),
+            $fetchTimeout,
+            $ownCompetitorName,
         );
+        $fetcher = new ShopFetcher($fetchTimeout);
 
         $feedLookup = null;
         if ($feedUrl !== null && $feedUrl !== '' && $feedLastUpdateUrl !== null && $feedLastUpdateUrl !== '') {

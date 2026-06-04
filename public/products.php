@@ -75,8 +75,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'product_create',
             'Produkt angelegt: ID ' . $id . ', PZN ' . $result['data']['pzn']
         );
-        flash('success', 'Produkt wurde erfolgreich angelegt.');
-        redirect('products.php');
+
+        $shopSync = createShopSyncService(
+            $pdo,
+            $repository,
+            $shopUrlValidator,
+            $fetchTimeout,
+            $ownCompetitorName,
+        );
+        $snapshotBootstrap = bootstrapOwnShopSnapshotAfterSave($id, $result['data'], $shopSync);
+
+        if ($snapshotBootstrap['attempted']) {
+            Auth::logAudit(
+                $user['id'],
+                $snapshotBootstrap['success'] ? 'product_snapshot_created' : 'product_snapshot_failed',
+                'Nach Anlegen ID ' . $id . ': ' . $snapshotBootstrap['message'],
+            );
+        }
+
+        $flashMessage = 'Produkt wurde erfolgreich angelegt.';
+        if ($snapshotBootstrap['attempted'] && $snapshotBootstrap['success']) {
+            $flashMessage .= ' Eigen-Shop-Snapshot erzeugt und Ranking berechnet.';
+        } elseif ($snapshotBootstrap['attempted'] && !$snapshotBootstrap['success']) {
+            $flashMessage .= ' Hinweis: Snapshot/Ranking – ' . $snapshotBootstrap['message'];
+        }
+
+        flash('success', $flashMessage);
+        redirect('products.php?action=edit&id=' . $id);
     }
 
     if ($postAction === 'update') {
@@ -254,14 +279,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('products.php');
         }
 
-        $rankingRepo = new RankingRepository($pdo);
-        $shopSync = new ShopSyncService(
+        $shopSync = createShopSyncService(
+            $pdo,
             $repository,
-            new OwnShopRepository($pdo, $ownCompetitorName),
             $shopUrlValidator,
-            new ShopFetcher($fetchTimeout),
-            new ShopHtmlParser(),
-            new RankingEngine($rankingRepo),
+            $fetchTimeout,
+            $ownCompetitorName,
         );
 
         $syncResult = $shopSync->syncProduct($id);
