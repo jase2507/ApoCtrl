@@ -242,6 +242,21 @@ body {
     margin-top: 0.25rem;
 }
 
+/* ── Pagination ── */
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-top: 1rem;
+}
+
+.pagination-info {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
 /* ── KPI Grid ── */
 
 .kpi-grid {
@@ -529,6 +544,74 @@ body {
     background: var(--color-bg);
     color: var(--color-text-muted);
     border: 1px solid var(--color-border);
+}
+
+.badge-own-shop {
+    background: #dbeafe;
+    color: #1d4ed8;
+    margin-left: 0.35rem;
+}
+
+.row-own-shop {
+    background: #eff6ff;
+}
+
+.row-own-shop td {
+    border-color: #bfdbfe;
+}
+
+.panel-shop {
+    margin-top: 1.5rem;
+}
+
+.panel-shop .panel-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.shop-sync-status {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.shop-sync-status h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+}
+
+.shop-sync-form {
+    margin-top: 0.75rem;
+}
+
+.text-error {
+    color: var(--color-danger);
+}
+
+.panel-pzn-autofill {
+    margin-bottom: 1.5rem;
+}
+
+.input-with-action {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.input-with-action input[type="text"] {
+    flex: 1 1 12rem;
+    min-width: 8rem;
+}
+
+.field-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.autofill-hits {
+    margin-top: 1rem;
 }
 
 .cell-truncate {

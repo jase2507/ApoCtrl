@@ -90,11 +90,17 @@ declare(strict_types=1);
                             $price = (float) ($row['price'] ?? 0);
                             $shipping = (float) ($row['shipping_cost'] ?? 0);
                             $end = $price + $shipping;
+                            $isOwnShop = ($row['competitor_type'] ?? '') === 'own';
                             ?>
-                            <tr>
+                            <tr class="<?= $isOwnShop ? 'row-own-shop' : '' ?>">
                                 <td><code><?= e((string) ($row['pzn'] ?? '')) ?></code></td>
                                 <td><?= e((string) ($row['product_name'] ?? '')) ?></td>
-                                <td><?= e((string) ($row['competitor_name'] ?? '')) ?></td>
+                                <td>
+                                    <?= e((string) ($row['competitor_name'] ?? '')) ?>
+                                    <?php if ($isOwnShop): ?>
+                                        <span class="badge badge-own-shop">Eigener Shop</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= e(formatMoney($price)) ?></td>
                                 <td><?= e(formatMoney($shipping)) ?></td>
                                 <td><strong><?= e(formatMoney($end)) ?></strong></td>

@@ -1,28 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+/** @var array{observed_products:int,competitors:int,snapshots_today:int,snapshots_total:int,average_ranking:?float} $dashboardStats */
+$avgRanking = $dashboardStats['average_ranking'] ?? null;
+?>
 <div class="page-header">
     <h1>Dashboard</h1>
     <p class="page-subtitle">Willkommen, <?= e($user['username']) ?> (<?= e($user['role']) ?>)</p>
 </div>
 
 <div class="kpi-grid">
-    <div class="kpi-card kpi-placeholder">
-        <span class="kpi-label">Produkte gesamt</span>
-        <span class="kpi-value">—</span>
-        <span class="kpi-hint">Phase 2</span>
+    <div class="kpi-card">
+        <span class="kpi-label">Beobachtete Produkte</span>
+        <span class="kpi-value"><?= (int) $dashboardStats['observed_products'] ?></span>
+        <span class="kpi-hint">Mit mindestens einem Snapshot</span>
     </div>
-    <div class="kpi-card kpi-placeholder">
-        <span class="kpi-label">Aktive Produkte</span>
-        <span class="kpi-value">—</span>
-        <span class="kpi-hint">Phase 2</span>
+    <div class="kpi-card">
+        <span class="kpi-label">Wettbewerber</span>
+        <span class="kpi-value"><?= (int) $dashboardStats['competitors'] ?></span>
+        <span class="kpi-hint">Aktiv, ohne Testdaten</span>
     </div>
-    <div class="kpi-card kpi-placeholder">
-        <span class="kpi-label">Alerts offen</span>
-        <span class="kpi-value">—</span>
-        <span class="kpi-hint">Phase 2</span>
+    <div class="kpi-card">
+        <span class="kpi-label">Snapshots heute</span>
+        <span class="kpi-value"><?= (int) $dashboardStats['snapshots_today'] ?></span>
+        <span class="kpi-hint">Erfasst am heutigen Tag</span>
     </div>
-    <div class="kpi-card kpi-placeholder">
-        <span class="kpi-label">Durchschnittsranking</span>
-        <span class="kpi-value">—</span>
-        <span class="kpi-hint">Phase 2</span>
+    <div class="kpi-card">
+        <span class="kpi-label">Snapshots gesamt</span>
+        <span class="kpi-value"><?= (int) $dashboardStats['snapshots_total'] ?></span>
+        <span class="kpi-hint"><a href="snapshots.php">Alle anzeigen</a></span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Durchschnittliches Ranking</span>
+        <span class="kpi-value"><?= $avgRanking !== null ? e((string) $avgRanking) : '—' ?></span>
+        <span class="kpi-hint">Über alle gerankten Snapshots</span>
     </div>
 </div>
 
@@ -46,8 +58,8 @@
                     CSRF-Schutz
                 </li>
                 <li>
-                    <span class="status-badge status-pending">Geplant</span>
-                    Produkte, Importe, Rankings
+                    <span class="status-badge status-ok">Aktiv</span>
+                    Produkte, Importe, Rankings, Snapshots
                 </li>
             </ul>
         </div>
@@ -69,7 +81,7 @@
             <h2>Top Gewinner</h2>
         </div>
         <div class="panel-body">
-            <p class="text-muted">Ranking-Daten folgen in Phase 2.</p>
+            <p class="text-muted">Ranking-Auswertungen folgen in einer späteren Phase.</p>
         </div>
     </section>
 
@@ -78,7 +90,7 @@
             <h2>Top Verlierer</h2>
         </div>
         <div class="panel-body">
-            <p class="text-muted">Ranking-Daten folgen in Phase 2.</p>
+            <p class="text-muted">Ranking-Auswertungen folgen in einer späteren Phase.</p>
         </div>
     </section>
 </div>

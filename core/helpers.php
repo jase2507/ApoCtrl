@@ -94,6 +94,7 @@ function navItems(): array
         'competitors' => ['label' => 'Wettbewerber', 'url' => 'competitors.php', 'phase' => 2],
         'imports' => ['label' => 'Importe', 'url' => 'imports.php', 'phase' => 3],
         'rankings' => ['label' => 'Rankings', 'url' => 'rankings.php', 'phase' => 4],
+        'snapshots' => ['label' => 'Snapshots', 'url' => 'snapshots.php', 'phase' => 5],
         'suggestions' => ['label' => 'Preisvorschläge', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'alerts' => ['label' => 'Alerts', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'reports' => ['label' => 'Reports', 'url' => '#', 'phase' => 2, 'disabled' => true],

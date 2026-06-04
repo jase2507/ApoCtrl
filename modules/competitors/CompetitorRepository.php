@@ -11,13 +11,15 @@ class CompetitorRepository
     /**
      * @return list<array<string, mixed>>
      */
-    public function findAll(): array
+    public function findAll(bool $includeTest = false): array
     {
-        $stmt = $this->pdo->query(
-            'SELECT * FROM competitors ORDER BY active DESC, priority ASC, name ASC'
-        );
+        $sql = 'SELECT * FROM competitors';
+        if (!$includeTest) {
+            $sql .= ' WHERE is_test = 0';
+        }
+        $sql .= ' ORDER BY priority ASC, name ASC';
 
-        return $stmt->fetchAll();
+        return $this->pdo->query($sql)->fetchAll();
     }
 
     public function findById(int $id): ?array
@@ -31,7 +33,7 @@ class CompetitorRepository
 
     public function existsByName(string $name, ?int $excludeId = null): bool
     {
-        $sql = 'SELECT COUNT(*) FROM competitors WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name))';
+        $sql = 'SELECT COUNT(*) FROM competitors WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name)) AND is_test = 0';
         $params = ['name' => $name];
 
         if ($excludeId !== null) {
@@ -72,6 +74,7 @@ class CompetitorRepository
                 COUNT(*) AS count,
                 GROUP_CONCAT(id, ',') AS ids
              FROM competitors
+             WHERE is_test = 0
              GROUP BY LOWER(TRIM(name))
              HAVING COUNT(*) > 1
              ORDER BY name ASC"
@@ -87,8 +90,8 @@ class CompetitorRepository
     {
         $now = date('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare(
-            'INSERT INTO competitors (name, url, priority, active, notes, created_at, updated_at)
-             VALUES (:name, :url, :priority, :active, :notes, :created_at, :updated_at)'
+            'INSERT INTO competitors (name, url, priority, active, is_test, notes, created_at, updated_at)
+             VALUES (:name, :url, :priority, :active, 0, :notes, :created_at, :updated_at)'
         );
 
         $stmt->execute([
@@ -147,7 +150,7 @@ class CompetitorRepository
     /**
      * Bereinigt Testdaten und führt doppelte DocMorris-Einträge zusammen.
      *
-     * @return array{deleted_phase4:int, merged_docmorris:int, kept_docmorris_id:int|null}
+     * @return array{deleted_phase4:int, deactivated_phase4:int, merged_docmorris:int, kept_docmorris_id:int|null}
      */
     public function cleanupTestDataAndDuplicates(): array
     {
@@ -163,14 +166,12 @@ class CompetitorRepository
         $phase4Ids = array_map(static fn(array $r): int => (int) $r['id'], $phase4Stmt->fetchAll());
 
         if ($phase4Ids !== []) {
-            $placeholders = implode(',', array_fill(0, count($phase4Ids), '?'));
-
             foreach ($phase4Ids as $phase4Id) {
                 if ($this->hasReferences($phase4Id)) {
-                    $deactivate = $this->pdo->prepare(
-                        'UPDATE competitors SET active = 0, updated_at = :updated_at WHERE id = :id'
+                    $mark = $this->pdo->prepare(
+                        'UPDATE competitors SET is_test = 1, active = 0, updated_at = :updated_at WHERE id = :id'
                     );
-                    $deactivate->execute([
+                    $mark->execute([
                         'id' => $phase4Id,
                         'updated_at' => date('Y-m-d H:i:s'),
                     ]);
@@ -185,7 +186,7 @@ class CompetitorRepository
         }
 
         $docStmt = $this->pdo->prepare(
-            "SELECT id FROM competitors WHERE LOWER(TRIM(name)) = 'docmorris' ORDER BY id ASC"
+            "SELECT id FROM competitors WHERE LOWER(TRIM(name)) = 'docmorris' AND is_test = 0 ORDER BY id ASC"
         );
         $docStmt->execute();
         $docIds = array_map(static fn(array $r): int => (int) $r['id'], $docStmt->fetchAll());
@@ -194,7 +195,7 @@ class CompetitorRepository
             $preferred = $this->pdo->prepare(
                 "SELECT id
                  FROM competitors
-                 WHERE LOWER(TRIM(name)) = 'docmorris'
+                 WHERE LOWER(TRIM(name)) = 'docmorris' AND is_test = 0
                  ORDER BY (url IS NULL OR TRIM(url) = '') ASC, id ASC
                  LIMIT 1"
             );

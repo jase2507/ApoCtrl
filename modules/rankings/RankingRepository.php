@@ -72,7 +72,8 @@ class RankingRepository
                 ps.captured_at,
                 p.pzn,
                 p.name AS product_name,
-                c.name AS competitor_name
+                c.name AS competitor_name,
+                c.type AS competitor_type
              FROM price_snapshots ps
              INNER JOIN products p ON p.id = ps.product_id
              INNER JOIN competitors c ON c.id = ps.competitor_id
@@ -130,7 +131,8 @@ class RankingRepository
                 ps.captured_at,
                 p.pzn,
                 p.name AS product_name,
-                c.name AS competitor_name
+                c.name AS competitor_name,
+                c.type AS competitor_type
             FROM price_snapshots ps
             INNER JOIN (
                 SELECT product_id, MAX(captured_at) AS latest_captured_at

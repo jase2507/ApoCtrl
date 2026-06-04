@@ -63,9 +63,9 @@ declare(strict_types=1);
                 <?php else: ?>
                     <?php foreach ($products as $product): ?>
                         <tr class="<?= (int) $product['active'] === 0 ? 'row-inactive' : '' ?>">
-                            <td><code><?= e($product['pzn']) ?></code></td>
-                            <td><?= e($product['name']) ?></td>
-                            <td><?= e($product['manufacturer'] ?? '—') ?></td>
+                            <td><code><?= e((string) ($product['pzn'] ?? '')) ?></code></td>
+                            <td><?= e((string) ($product['name'] ?? '')) ?></td>
+                            <td><?= e((string) ($product['manufacturer'] ?? '—')) ?></td>
                             <td><?= e(formatMoney($product['sale_price'] !== null ? (float) $product['sale_price'] : null)) ?></td>
                             <td><?= e(formatMoney($product['min_price'] !== null ? (float) $product['min_price'] : null)) ?></td>
                             <td><?= e($product['target_rank'] !== null ? (string) $product['target_rank'] : '—') ?></td>

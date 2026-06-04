@@ -50,4 +50,17 @@ return [
     ],
 
     'timezone' => 'Europe/Berlin',
+
+    'shop' => [
+        'allowed_host' => 'shop.apotheker-seidel.de',
+        'base_url' => 'https://shop.apotheker-seidel.de/',
+        'feed_url' => 'https://shop.apotheker-seidel.de/eStLeonard-Oy8chie2Ie/medizinfuchs/eStLeonard_medizinfuchs.csv',
+        'feed_last_update_url' => 'https://shop.apotheker-seidel.de/eStLeonard-Oy8chie2Ie/medizinfuchs/last_update.txt',
+        'deeplink_template' => 'https://shop.apotheker-seidel.de/product?artnr={PZN}',
+        'html_search_fallback' => false,
+        'search_url' => 'https://shop.apotheker-seidel.de/renderProductSummary?pzn={PZN}',
+        'debug_autofill' => false,
+        'fetch_timeout' => 15,
+        'own_competitor_name' => 'Eigener Shop',
+    ],
 ];

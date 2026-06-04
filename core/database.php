@@ -81,8 +81,39 @@ class Database
     public static function runMigrations(PDO $pdo): void
     {
         self::addColumnIfNotExists($pdo, 'competitors', 'notes', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'competitors', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
+        self::addColumnIfNotExists($pdo, 'competitors', 'type', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'products', 'shop_url', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'products', 'package_size', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'products', 'avp_price', 'REAL');
+        self::addColumnIfNotExists($pdo, 'products', 'own_shipping_cost', 'REAL NOT NULL DEFAULT 0');
+        self::addColumnIfNotExists($pdo, 'products', 'last_shop_sync_at', 'DATETIME');
+        self::addColumnIfNotExists($pdo, 'products', 'shop_sync_status', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'products', 'shop_sync_error', 'TEXT');
         self::addColumnIfNotExists($pdo, 'import_logs', 'status', "TEXT NOT NULL DEFAULT 'running'");
+        self::markPhase4CompetitorsAsTest($pdo);
+        self::ensureOwnShopCompetitor($pdo);
         self::ensureUniqueCompetitorNameIndex($pdo);
+        self::addColumnIfNotExists($pdo, 'price_snapshots', 'created_at', 'DATETIME');
+        self::backfillSnapshotCreatedAt($pdo);
+        self::ensureSnapshotIndexes($pdo);
+    }
+
+    private static function backfillSnapshotCreatedAt(PDO $pdo): void
+    {
+        $pdo->exec(
+            'UPDATE price_snapshots SET created_at = captured_at WHERE created_at IS NULL'
+        );
+    }
+
+    private static function ensureSnapshotIndexes(PDO $pdo): void
+    {
+        $pdo->exec(
+            'CREATE INDEX IF NOT EXISTS idx_snapshots_product ON price_snapshots (product_id)'
+        );
+        $pdo->exec(
+            'CREATE INDEX IF NOT EXISTS idx_snapshots_capture ON price_snapshots (captured_at)'
+        );
     }
 
     private static function addColumnIfNotExists(PDO $pdo, string $table, string $column, string $definition): void
@@ -97,6 +128,86 @@ class Database
         }
 
         $pdo->exec(sprintf('ALTER TABLE %s ADD COLUMN %s %s', $table, $column, $definition));
+    }
+
+    private static function ensureOwnShopCompetitor(PDO $pdo): void
+    {
+        $stmt = $pdo->prepare(
+            "SELECT id FROM competitors WHERE type = 'own' ORDER BY id ASC LIMIT 1"
+        );
+        $stmt->execute();
+        $existingId = $stmt->fetchColumn();
+
+        $now = date('Y-m-d H:i:s');
+
+        if ($existingId !== false) {
+            $update = $pdo->prepare(
+                "UPDATE competitors SET
+                    name = 'Eigener Shop',
+                    url = 'https://shop.apotheker-seidel.de/',
+                    active = 1,
+                    priority = -100,
+                    is_test = 0,
+                    updated_at = :updated_at
+                 WHERE id = :id"
+            );
+            $update->execute([
+                'id' => (int) $existingId,
+                'updated_at' => $now,
+            ]);
+
+            $pdo->exec(
+                "UPDATE competitors
+                 SET active = 0, updated_at = datetime('now')
+                 WHERE type = 'own' AND id != " . (int) $existingId
+            );
+
+            return;
+        }
+
+        $byName = $pdo->prepare(
+            "SELECT id FROM competitors WHERE LOWER(TRIM(name)) = 'eigener shop' ORDER BY id ASC LIMIT 1"
+        );
+        $byName->execute();
+        $nameId = $byName->fetchColumn();
+
+        if ($nameId !== false) {
+            $promote = $pdo->prepare(
+                "UPDATE competitors SET
+                    name = 'Eigener Shop',
+                    url = 'https://shop.apotheker-seidel.de/',
+                    type = 'own',
+                    active = 1,
+                    priority = -100,
+                    is_test = 0,
+                    updated_at = :updated_at
+                 WHERE id = :id"
+            );
+            $promote->execute([
+                'id' => (int) $nameId,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        $insert = $pdo->prepare(
+            "INSERT INTO competitors (name, url, type, priority, active, is_test, created_at, updated_at)
+             VALUES ('Eigener Shop', 'https://shop.apotheker-seidel.de/', 'own', -100, 1, 0, :created_at, :updated_at)"
+        );
+        $insert->execute([
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    private static function markPhase4CompetitorsAsTest(PDO $pdo): void
+    {
+        $pdo->exec(
+            "UPDATE competitors
+             SET is_test = 1, active = 0, updated_at = datetime('now')
+             WHERE name IN ('Phase4-A', 'Phase4-B', 'Phase4-C', 'Phase4-D')"
+        );
     }
 
     private static function ensureUniqueCompetitorNameIndex(PDO $pdo): void

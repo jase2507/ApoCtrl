@@ -16,6 +16,21 @@ $action = query('action', 'list') ?? 'list';
 $currentNav = 'competitors';
 $user = Auth::getUser();
 
+$blockTestCompetitor = static function (?array $competitor): bool {
+    if ($competitor === null) {
+        return false;
+    }
+
+    if ((int) ($competitor['is_test'] ?? 0) !== 1) {
+        return false;
+    }
+
+    flash('error', 'Testdaten sind nicht bearbeitbar.');
+    redirect('competitors.php');
+
+    return true;
+};
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requirePostCsrf();
     $postAction = post('action', '');
@@ -51,6 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($existing === null) {
             flash('error', 'Wettbewerber nicht gefunden.');
             redirect('competitors.php');
+        }
+
+        if ($blockTestCompetitor($existing)) {
+            exit;
         }
 
         $result = $validator->validate($_POST, $id);
@@ -98,6 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('competitors.php');
         }
 
+        if ($blockTestCompetitor($existing)) {
+            exit;
+        }
+
         $repository->setActive($id, $active);
         Auth::logAudit(
             $user['id'],
@@ -115,6 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($existing === null) {
             flash('error', 'Wettbewerber nicht gefunden.');
             redirect('competitors.php');
+        }
+
+        if ($blockTestCompetitor($existing)) {
+            exit;
         }
 
         if ($repository->hasReferences($id)) {
@@ -197,6 +224,10 @@ match ($action) {
             redirect('competitors.php');
         }
 
+        if ($blockTestCompetitor($competitor)) {
+            exit;
+        }
+
         $pageTitle = 'Wettbewerber bearbeiten';
         $errors = [];
         $formAction = 'update';
@@ -207,12 +238,13 @@ match ($action) {
     })(),
 
     default => (function () use ($repository, $config, $currentNav, $user): void {
-        $competitors = $repository->findAll();
+        $showTest = query('show_test', '') === '1';
+        $competitors = $repository->findAll($showTest);
         $duplicates = $repository->findDuplicates();
         $pageTitle = 'Wettbewerber';
 
         renderLayout('modules/competitors/list.php', compact(
-            'pageTitle', 'currentNav', 'user', 'config', 'competitors', 'duplicates'
+            'pageTitle', 'currentNav', 'user', 'config', 'competitors', 'duplicates', 'showTest'
         ));
     })(),
 };

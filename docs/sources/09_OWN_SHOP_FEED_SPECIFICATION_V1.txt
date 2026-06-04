@@ -1,0 +1,87 @@
+ApoCtrl – Eigener Shop Medizinfuchs-Feed (Spezifikation v1)
+============================================================
+
+Zweck
+-----
+Der PZN-Autofill (Phase 4.2) bezieht Produktdaten aus dem offiziellen
+Medizinfuchs-CSV-Feed des eigenen Shops – nicht mehr aus HTML-Suche oder
+renderProductSummary. Der Feed ist stabil, maschinenlesbar und für den
+Shared-Hosting-Betrieb ohne externe Bibliotheken geeignet.
+
+Warum Feed statt HTML-Scraping
+------------------------------
+- Die Shop-Such-URL (/search?sSearch=) leitet auf die Startseite um.
+- HTML-Strukturen ändern sich häufig (dl.productInfos, Vue-Komponenten).
+- Der CSV-Feed enthält PZN und Preise zuverlässig; erweiterte Spalten
+  werden tolerant per Header-Mapping erkannt.
+- Lokaler Cache anhand last_update.txt reduziert Last und Ausfallrisiko.
+
+URLs (verbindlich)
+------------------
+Feed-CSV:
+  https://shop.apotheker-seidel.de/eStLeonard-Oy8chie2Ie/medizinfuchs/eStLeonard_medizinfuchs.csv
+
+Last-Update:
+  https://shop.apotheker-seidel.de/eStLeonard-Oy8chie2Ie/medizinfuchs/last_update.txt
+
+Deeplink-Template (Shop-URL im Produkt):
+  https://shop.apotheker-seidel.de/product?artnr={PZN}
+  Platzhalter {PZN} = normalisierte 8-stellige PZN.
+
+Konfiguration (config.php → shop)
+--------------------------------
+  feed_url
+  feed_last_update_url
+  deeplink_template
+  html_search_fallback (optional, Standard: false)
+  search_url (nur bei html_search_fallback=true)
+
+Cache
+-----
+  storage/imports/own_shop_feed.csv
+  storage/imports/own_shop_feed_last_update.txt
+
+Logik
+-----
+1. last_update online laden und mit Cache vergleichen.
+2. Bei gleichem Stand: Cache-CSV verwenden.
+3. Bei neuem Stand oder fehlendem Cache: CSV laden und cachen.
+4. Bei Online-Fehler mit vorhandenem Cache: Cache + Warnung.
+
+PZN-Autofill (Produktseite + optionaler Feed)
+--------------------------------------------
+1. Produktseite immer zuerst: product?artnr={PZN} (Deeplink).
+2. Stammdaten ausschließlich aus HTML (Name, Hersteller, Einheit, AVP, Shoppreis).
+3. Preisfeed optional: nur Medizinfuchs-Preis / Snapshot.
+4. Feed nicht erreichbar: Hinweis „Preisfeed nicht erreichbar, Produktseite wird verwendet.“
+5. Verkaufspreis: Feedpreis wenn vorhanden, sonst HTML-Preis.
+6. Fehler nur wenn Produktseite nicht erreichbar.
+
+Module
+------
+  OwnShopFeedFetcher   – HTTP-Abruf (cURL / file_get_contents)
+  OwnShopFeedCache     – lokale Ablage
+  OwnShopFeedParser    – CSV, Trennzeichen, Spalten-Mapping
+  OwnShopFeedLookupService – Laden, Lookup, Deeplink, Parsed-Format
+  PznAutofillService   – Feed primär, HTML optional als Fallback
+
+Snapshot / Ranking
+------------------
+Nach Übernahme bei gespeichertem Produkt (Checkbox Shop-Sync):
+  price = Feed-Preis
+  shipping_cost = own_shipping_cost des Produkts
+  delivery_status = Feed-Verfügbarkeit (falls Spalte vorhanden)
+  Ranking wird neu berechnet (RankingEngine).
+
+Beispiel PZN 16609329
+---------------------
+Im erweiterten Fixture-Feed:
+  Name: BITE AWAY neo Stichheiler 1 St
+  Hersteller: MibeTec GmbH
+  Preis: 21,80 €
+  AVP: 22,95 €
+  Packung: 1 St
+  URL: https://shop.apotheker-seidel.de/product?artnr=16609329
+
+Im Live-Feed (nur PZN;Preis) werden mindestens Preis und Deeplink gesetzt;
+Name/Hersteller nur wenn Spalten im CSV vorhanden sind.

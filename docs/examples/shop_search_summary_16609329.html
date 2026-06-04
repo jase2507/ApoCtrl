@@ -1,0 +1,244 @@
+
+
+<div class="boxProduct   "  itemprop="isRelatedTo" itemscope itemtype="http://schema.org/Product" id="product-box-16609329">
+<div class="product-photo" id="productInfoLink_ecommerce_16609329_1780462654060">
+<figure>
+<a href="https://shop.apotheker-seidel.de/bite-away-neo-stichheiler-1st-16609329" >
+
+<picture>
+<source type="image/webp" srcset="/images/ecommerce/16/60/16609329_200x200.webp">
+<source type="image/png" srcset="/images/ecommerce/16/60/16609329_200x200.png">
+<img src="/images/ecommerce/16/60/16609329_200x200.png" alt="BITE AWAY neo Stichheiler" loading="lazy" itemprop="image"  width="" height="">
+</picture>
+</a>
+</figure>
+</div>
+<div id="fav1780462654062" class="addToFav" @click="toggleFavoritesProduct"><i :class="{'icon-heart-o': isFavoritesProduct==='false', 'icon-heart': isFavoritesProduct==='true'}"></i></div>
+<div class="product-right">
+<header class="product-title">
+<h3  itemprop="name">
+<a href="https://shop.apotheker-seidel.de/bite-away-neo-stichheiler-1st-16609329"   itemprop="url">BITE AWAY neo Stichheiler <span> 1 St </span></a>
+</h3>
+</header>
+
+
+<meta itemprop="gtin14" content="04150016609329" />
+<meta itemprop="sku" content="16609329" />
+
+<dl class="productInfos">
+<dt class="producer" ifa-nr="9181">Anbieter:</dt>
+<dd class="producer" ifa-nr="9181"  itemprop="brand">MibeTec GmbH</dd>
+<dt class="form">Einheit:</dt>
+<dd class="form"  itemprop="model">
+1 <span class="quantity"> St </span>
+</dd>
+<dt class="pzn">PZN:</dt>
+<dd class="pzn"  itemprop="productID">16609329</dd>
+</dl>
+
+
+
+
+
+<div id="availabilityWrapper1780462654065">
+<div class="productAvailabilityPharmaciesList" @mouseover ="getProductPharmaciesAvailabilities" @mouseleave="hovering = false">
+<div class="av-text" style="display:none"><span class="av-icon status1"></span><span>Verf&uuml;gbarkeit</span></div>
+<div class="av-wrap">
+<dl v-for="shopPharmacyAvailability, index in shopPharmaciesAvailabilities" :key="index" class="productAvailability shopPharmaciesAvailability">
+<dt><div v-html="shopPharmacyAvailability.pharmacyName" class="pharmacyName" style="display:inline"></div><span>:</span></dt>
+<dd class="status" :class="shopPharmacyAvailability.availabilityClass">
+<span class="icon" :title="shopPharmacyAvailability.availabilityTooltip">&nbsp;</span>
+<span :title="shopPharmacyAvailability.availabilityTooltip">
+<div v-if="shopPharmacyAvailability.stockText">
+<div class="stockText">{{shopPharmacyAvailability.stockText}}</div>
+<div class="availabilityText" v-html="shopPharmacyAvailability.availabilityText"></div>
+</div>
+<div v-else v-html="shopPharmacyAvailability.availabilityText"></div>
+</span>
+</dd>
+</dl>
+</div>
+</div>
+<div class="productAvailabilityPharmaciesGlobal">
+<dl class="productAvailability">
+<dt>Verf&uuml;gbarkeit<span>:</span></dt>
+<dd class="status status1">
+<span class="icon" title="vorr&auml;tig, sofort lieferbar.">&nbsp;</span>
+<span title="vorr&auml;tig, sofort lieferbar.">vorrätig, sofort lieferbar.</span>
+</dd>
+</dl>
+</div>
+</div>
+<script>
+var avApp1780462654065 = new Vue({
+    el: '#availabilityWrapper1780462654065',
+    data: {
+    productId: "2451673",
+    shopPharmaciesAvailabilities: [],
+    hovering:false
+    },
+    methods: {
+getProductPharmaciesAvailabilities: function() {
+if (!this.hovering) {
+this.hovering = true;
+
+let url = new URL('https://shop.apotheker-seidel.de/getProductPharmaciesAvailabilities');
+let params = {productId: this.productId};
+url.search = new URLSearchParams(params).toString();
+fetch(url)
+.then(response => response.json())
+.then(jsonResult => {
+avApp1780462654065.shopPharmaciesAvailabilities = jsonResult.map(function(shopPharmacyAvailability) {
+return new ProductAvailabilityDomain.ShopPharmacyAvailabilityDTO(shopPharmacyAvailability);
+});
+}).catch(ex => {});
+}
+}
+    }
+});
+</script>
+
+
+
+
+
+
+
+
+<dl class="productPrice" >
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dt class="yourPrice">Ihr Preis:</dt>
+
+<dd class="yourPrice">21,80 €<span>&sup1;</span></dd>
+<dt class="listPrice"><abbr title="Unverbindliche Preisempfehlung">UVP</abbr>:</dt>
+<dd class="listPrice"><span class="decorated">22,95 €</span><span>&sup3;</span></dd>
+
+<dt class="youSave">Sie sparen:</dt>
+<dd class="youSave">
+<span>1,15 €</span>
+<span class="percent"> <em>(</em>5%<em>)</em></span>
+<span class="percentRound hidden"> <em>(</em>5%<em>)</em></span>
+</dd>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</dl>
+
+<div class="hidden" itemprop="offers" itemscope itemtype="http://schema.org/Offer">
+<meta itemprop="availability" content="http://schema.org/OutOfStock"/>vorrätig, sofort lieferbar. vorr&auml;tig, sofort lieferbar.
+<span itemprop="price" content="21.80"></span><meta itemprop="priceCurrency" content="EUR"/><link itemprop="itemCondition" href="http://schema.org/NewCondition" />
+</div>
+
+<div class="youSavePercent"><div class="youSavePercent-wrap"><span class="pricePercentText">Rabatt</span> <span class="pricePercentSavedNormal"><span class="minus">-</span>5%</span><span class="pricePercentSavedRound hidden"><span class="minus">-</span>5%</span></div></div>
+
+
+<div class="addToCartProductForm">
+<form method="post" action="https://shop.apotheker-seidel.de/additem" name="theasyncProductSummary12786form">
+<input type="hidden" name="add_product_id" value="16609329"/> <input type="number" name="quantity" value="1" class="text quantity" pattern="[0-9]{1,}" /><button type="submit" class="buttonLinks btnAddToCart addToCart /images/ecommerce/16/60/16609329_200x200.png" id="sbtnAddProd_12786" onclick="get(document.theasyncProductSummary12786form,'https://shop.apotheker-seidel.de/additem',alertContents);" title="In den Warenkorb">
+<span><em>In den Warenkorb</em></span>
+<img src="/eTheme4/layout/images/blank.gif" class="loadingAddToCart" alt="loading..." data-name="theasyncProductSummary12786form_img"/>
+</button>
+</form>
+</div>
+
+<div class="buttons">
+<a class="buttonLinks btnDetails" href="https://shop.apotheker-seidel.de/bite-away-neo-stichheiler-1st-16609329"  title="Details"><span><em>Details</em></span></a>
+</div>
+
+
+
+</div>
+
+<script>
+
+function initializeFavoriteComponent1780462654062() {
+
+    let isInitialized = initializeFavoriteComponent1780462654062.isInitialized || false;
+    if (isInitialized) { return; }
+    initializeFavoriteComponent1780462654062.isInitialized = true;
+    
+var favApp1780462654062 = new Vue({
+    el: '#fav1780462654062',
+
+    data: {
+        isFavoritesProduct: "false",
+        productId: 2451673
+    },
+    
+created: function() {
+document.addEventListener('check-if-fav', (event) => {
+  favApp1780462654062.checkIsFavoritesProduct();
+});
+},
+
+    methods: {
+    checkIsFavoritesProduct: function() {
+let url = new URL('https://shop.apotheker-seidel.de/isFavoritesProduct');
+let params = {productId: this.productId};
+url.search = new URLSearchParams(params).toString();
+fetch(url)
+.then(res => res.json())
+.then(jsonResult => {
+favApp1780462654062.isFavoritesProduct = jsonResult.toString();
+});
+},
+
+toggleFavoritesProduct: function() {
+let url = new URL('https://shop.apotheker-seidel.de/toggleFavoritesProduct');
+let params = {productId: this.productId};
+url.search = new URLSearchParams(params).toString();
+fetch(url)
+.then(res => res.json())
+.then(jsonResult => {
+if (jsonResult === 'notlogged') {
+window.location='https://shop.apotheker-seidel.de/checkLogin?loginToProdId=2451673';
+} else {
+let urlCount = new URL('https://shop.apotheker-seidel.de/getFavoritesCount');
+urlCount.search = new URLSearchParams(params).toString();
+fetch(urlCount)
+.then(res => res.json())
+.then(jsonResult => {
+headerFavApp.favoritesCount = jsonResult;
+});
+favApp1780462654062.checkIsFavoritesProduct();
+}
+});
+}
+    }
+})
+}
+if (typeof Vue !== 'undefined') {
+initializeFavoriteComponent1780462654062()
+}
+document.addEventListener("DOMContentLoaded", () => {  initializeFavoriteComponent1780462654062()});
+</script>
+
+</div>
+
+

@@ -38,6 +38,7 @@ $pdo->exec('CREATE TABLE competitors (
     url TEXT,
     priority INTEGER,
     active INTEGER,
+    is_test INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
     created_at DATETIME,
     updated_at DATETIME

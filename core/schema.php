@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS products (
     strategy TEXT,
     category TEXT,
     active INTEGER NOT NULL DEFAULT 1,
+    shop_url TEXT,
+    package_size TEXT,
+    avp_price REAL,
+    own_shipping_cost REAL NOT NULL DEFAULT 0,
+    last_shop_sync_at DATETIME,
+    shop_sync_status TEXT,
+    shop_sync_error TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
@@ -39,8 +46,10 @@ CREATE TABLE IF NOT EXISTS competitors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     url TEXT,
+    type TEXT,
     priority INTEGER DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
+    is_test INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -56,6 +65,7 @@ CREATE TABLE IF NOT EXISTS price_snapshots (
     delivery_status TEXT,
     ranking INTEGER,
     captured_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (competitor_id) REFERENCES competitors(id)
 )

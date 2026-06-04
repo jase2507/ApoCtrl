@@ -2,10 +2,19 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/snapshots/SnapshotRepository.php';
+require_once dirname(__DIR__) . '/snapshots/SnapshotService.php';
+
 class ImportRepository
 {
-    public function __construct(private readonly PDO $pdo)
-    {
+    private readonly SnapshotService $snapshotService;
+
+    public function __construct(
+        private readonly PDO $pdo,
+        ?SnapshotService $snapshotService = null,
+    ) {
+        $this->snapshotService = $snapshotService
+            ?? new SnapshotService(new SnapshotRepository($pdo));
     }
 
     public function startImportLog(string $filename): int
@@ -76,7 +85,7 @@ class ImportRepository
     public function findCompetitorByName(string $name): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, name FROM competitors WHERE LOWER(name) = LOWER(:name) LIMIT 1'
+            'SELECT id, name FROM competitors WHERE LOWER(name) = LOWER(:name) AND is_test = 0 LIMIT 1'
         );
         $stmt->execute(['name' => $name]);
         $row = $stmt->fetch();
@@ -88,24 +97,14 @@ class ImportRepository
         int $competitorId,
         float $price,
         float $shippingCost,
-        ?string $availability
+        ?string $availability,
     ): void {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO price_snapshots (
-                product_id, competitor_id, price, shipping_cost, delivery_status, ranking, captured_at
-            ) VALUES (
-                :product_id, :competitor_id, :price, :shipping_cost, :delivery_status, :ranking, :captured_at
-            )'
+        $this->snapshotService->captureSnapshot(
+            $productId,
+            $competitorId,
+            $price,
+            $shippingCost,
+            is_string($availability) ? $availability : '',
         );
-
-        $stmt->execute([
-            'product_id' => $productId,
-            'competitor_id' => $competitorId,
-            'price' => $price,
-            'shipping_cost' => $shippingCost,
-            'delivery_status' => $availability,
-            'ranking' => null,
-            'captured_at' => date('Y-m-d H:i:s'),
-        ]);
     }
 }
