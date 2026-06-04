@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS products (
     strategy TEXT,
     category TEXT,
     active INTEGER NOT NULL DEFAULT 1,
+    is_test INTEGER NOT NULL DEFAULT 0,
     shop_url TEXT,
     package_size TEXT,
     avp_price REAL,

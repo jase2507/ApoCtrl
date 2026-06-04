@@ -17,6 +17,7 @@ $engine = new RankingEngine($repository);
 
 $runSummary = null;
 $filter = query('q', '') ?? '';
+$showTest = query('show_test', '') === '1';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requirePostCsrf();
@@ -53,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$latestRows = $repository->fetchLatestRankingRows($filter !== '' ? $filter : null);
-$products = $repository->listProducts();
+$latestRows = $repository->fetchLatestRankingRows($filter !== '' ? $filter : null, $showTest);
+$products = $repository->listProducts($showTest);
 
 renderLayout('modules/rankings/index.php', compact(
     'pageTitle',
@@ -64,5 +65,6 @@ renderLayout('modules/rankings/index.php', compact(
     'runSummary',
     'latestRows',
     'products',
-    'filter'
+    'filter',
+    'showTest',
 ));

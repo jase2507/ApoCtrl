@@ -5,6 +5,7 @@ declare(strict_types=1);
 /** @var array<string,mixed>|null $runSummary */
 /** @var list<array<string,mixed>> $latestRows */
 /** @var string $filter */
+/** @var bool $showTest */
 ?>
 <div class="page-header page-header-row">
     <div>
@@ -56,8 +57,14 @@ declare(strict_types=1);
         <label for="q">Filter nach Produkt/PZN</label>
         <input type="search" id="q" name="q" value="<?= e($filter) ?>" placeholder="PZN oder Produktname...">
     </div>
+    <div class="toolbar-group form-group-check">
+        <label class="checkbox-label">
+            <input type="checkbox" name="show_test" value="1" <?= $showTest ? 'checked' : '' ?>>
+            Testdaten anzeigen
+        </label>
+    </div>
     <button type="submit" class="btn btn-secondary">Filtern</button>
-    <?php if ($filter !== ''): ?>
+    <?php if ($filter !== '' || $showTest): ?>
         <a href="rankings.php" class="btn btn-secondary">Zurücksetzen</a>
     <?php endif; ?>
 </form>
@@ -93,7 +100,12 @@ declare(strict_types=1);
                             $isOwnShop = ($row['competitor_type'] ?? '') === 'own';
                             ?>
                             <tr class="<?= $isOwnShop ? 'row-own-shop' : '' ?>">
-                                <td><code><?= e((string) ($row['pzn'] ?? '')) ?></code></td>
+                                <td>
+                                    <code><?= e((string) ($row['pzn'] ?? '')) ?></code>
+                                    <?php if ((int) ($row['product_is_test'] ?? 0) === 1): ?>
+                                        <span class="badge badge-test">Test</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= e((string) ($row['product_name'] ?? '')) ?></td>
                                 <td>
                                     <?= e((string) ($row['competitor_name'] ?? '')) ?>

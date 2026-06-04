@@ -546,6 +546,11 @@ body {
     border: 1px solid var(--color-border);
 }
 
+.badge-test {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
 .badge-own-shop {
     background: #dbeafe;
     color: #1d4ed8;

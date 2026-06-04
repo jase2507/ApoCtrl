@@ -335,16 +335,17 @@ match ($action) {
     'list' => (function () use ($repository, $config, $currentNav, $user): void {
         $search = query('q', '') ?? '';
         $activeFilter = query('filter', 'all') ?? 'all';
+        $showTest = query('show_test', '') === '1';
 
         if (!in_array($activeFilter, ['all', 'active', 'inactive'], true)) {
             $activeFilter = 'all';
         }
 
-        $products = $repository->findAll($search !== '' ? $search : null, $activeFilter);
+        $products = $repository->findAll($search !== '' ? $search : null, $activeFilter, $showTest);
         $pageTitle = 'Produkte';
 
         renderLayout('modules/products/list.php', compact(
-            'pageTitle', 'currentNav', 'user', 'config', 'products', 'search', 'activeFilter'
+            'pageTitle', 'currentNav', 'user', 'config', 'products', 'search', 'activeFilter', 'showTest'
         ));
     })(),
 

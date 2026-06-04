@@ -76,18 +76,22 @@ class SnapshotRepository
     /**
      * @return array{rows: list<array<string, mixed>>, total: int, page: int, perPage: int, totalPages: int}
      */
-    public function findPaginated(int $page, int $perPage = 50): array
+    public function findPaginated(int $page, int $perPage = 50, bool $includeTest = false): array
     {
         $page = max(1, $page);
         $perPage = max(1, min(200, $perPage));
-        $total = $this->countAll();
+        $total = $this->countAll($includeTest);
         $totalPages = max(1, (int) ceil($total / $perPage));
         if ($page > $totalPages) {
             $page = $totalPages;
         }
         $offset = ($page - 1) * $perPage;
 
-        $sql = $this->selectWithJoins() . '
+        $sql = $this->selectWithJoins() . ' WHERE 1=1';
+        if (!$includeTest) {
+            $sql .= ' AND p.is_test = 0';
+        }
+        $sql .= '
             ORDER BY ps.captured_at DESC, ps.id DESC
             LIMIT :limit OFFSET :offset';
 
@@ -105,33 +109,53 @@ class SnapshotRepository
         ];
     }
 
-    public function countAll(): int
+    public function countAll(bool $includeTest = false): int
     {
-        return (int) $this->pdo->query('SELECT COUNT(*) FROM price_snapshots')->fetchColumn();
-    }
+        if ($includeTest) {
+            return (int) $this->pdo->query('SELECT COUNT(*) FROM price_snapshots')->fetchColumn();
+        }
 
-    public function countToday(): int
-    {
-        $stmt = $this->pdo->prepare(
-            "SELECT COUNT(*) FROM price_snapshots WHERE date(captured_at) = date('now', 'localtime')"
-        );
-        $stmt->execute();
-
-        return (int) $stmt->fetchColumn();
-    }
-
-    public function countObservedProducts(): int
-    {
         return (int) $this->pdo->query(
-            'SELECT COUNT(DISTINCT product_id) FROM price_snapshots'
+            'SELECT COUNT(*) FROM price_snapshots ps
+             INNER JOIN products p ON p.id = ps.product_id
+             WHERE p.is_test = 0'
         )->fetchColumn();
     }
 
-    public function averageRanking(): ?float
+    public function countToday(bool $includeTest = false): int
     {
-        $value = $this->pdo->query(
-            'SELECT AVG(ranking) FROM price_snapshots WHERE ranking IS NOT NULL'
-        )->fetchColumn();
+        $sql = "SELECT COUNT(*) FROM price_snapshots ps
+                INNER JOIN products p ON p.id = ps.product_id
+                WHERE date(ps.captured_at) = date('now', 'localtime')";
+        if (!$includeTest) {
+            $sql .= ' AND p.is_test = 0';
+        }
+
+        return (int) $this->pdo->query($sql)->fetchColumn();
+    }
+
+    public function countObservedProducts(bool $includeTest = false): int
+    {
+        $sql = 'SELECT COUNT(DISTINCT ps.product_id) FROM price_snapshots ps
+                INNER JOIN products p ON p.id = ps.product_id
+                WHERE 1=1';
+        if (!$includeTest) {
+            $sql .= ' AND p.is_test = 0';
+        }
+
+        return (int) $this->pdo->query($sql)->fetchColumn();
+    }
+
+    public function averageRanking(bool $includeTest = false): ?float
+    {
+        $sql = 'SELECT AVG(ps.ranking) FROM price_snapshots ps
+                INNER JOIN products p ON p.id = ps.product_id
+                WHERE ps.ranking IS NOT NULL';
+        if (!$includeTest) {
+            $sql .= ' AND p.is_test = 0';
+        }
+
+        $value = $this->pdo->query($sql)->fetchColumn();
 
         if ($value === false || $value === null) {
             return null;
@@ -154,6 +178,7 @@ class SnapshotRepository
             ps.created_at,
             p.pzn AS product_pzn,
             p.name AS product_name,
+            p.is_test AS product_is_test,
             c.name AS competitor_name
         FROM price_snapshots ps
         INNER JOIN products p ON p.id = ps.product_id

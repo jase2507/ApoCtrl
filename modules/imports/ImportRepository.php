@@ -68,13 +68,14 @@ class ImportRepository
     {
         $now = date('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare(
-            'INSERT INTO products (pzn, name, active, created_at, updated_at)
-             VALUES (:pzn, :name, :active, :created_at, :updated_at)'
+            'INSERT INTO products (pzn, name, active, is_test, created_at, updated_at)
+             VALUES (:pzn, :name, :active, :is_test, :created_at, :updated_at)'
         );
         $stmt->execute([
             'pzn' => $pzn,
             'name' => 'Importiertes Produkt',
             'active' => 1,
+            'is_test' => 0,
             'created_at' => $now,
             'updated_at' => $now,
         ]);

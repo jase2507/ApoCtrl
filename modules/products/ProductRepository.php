@@ -11,10 +11,14 @@ class ProductRepository
     /**
      * @return list<array<string, mixed>>
      */
-    public function findAll(?string $search, string $activeFilter): array
+    public function findAll(?string $search, string $activeFilter, bool $includeTest = false): array
     {
         $sql = 'SELECT * FROM products WHERE 1=1';
         $params = [];
+
+        if (!$includeTest) {
+            $sql .= ' AND is_test = 0';
+        }
 
         if ($activeFilter === 'active') {
             $sql .= ' AND active = 1';
@@ -69,12 +73,12 @@ class ProductRepository
         $stmt = $this->pdo->prepare(
             'INSERT INTO products (
                 pzn, name, manufacturer, cost_price, sale_price, min_price,
-                target_rank, strategy, category, active,
+                target_rank, strategy, category, active, is_test,
                 shop_url, package_size, avp_price, own_shipping_cost,
                 created_at, updated_at
             ) VALUES (
                 :pzn, :name, :manufacturer, :cost_price, :sale_price, :min_price,
-                :target_rank, :strategy, :category, :active,
+                :target_rank, :strategy, :category, :active, :is_test,
                 :shop_url, :package_size, :avp_price, :own_shipping_cost,
                 :created_at, :updated_at
             )'
@@ -91,6 +95,7 @@ class ProductRepository
             'strategy' => $data['strategy'],
             'category' => $data['category'],
             'active' => $data['active'],
+            'is_test' => (int) ($data['is_test'] ?? 0),
             'shop_url' => $data['shop_url'],
             'package_size' => $data['package_size'],
             'avp_price' => $data['avp_price'],

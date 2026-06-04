@@ -90,6 +90,8 @@ class Database
         self::addColumnIfNotExists($pdo, 'products', 'last_shop_sync_at', 'DATETIME');
         self::addColumnIfNotExists($pdo, 'products', 'shop_sync_status', 'TEXT');
         self::addColumnIfNotExists($pdo, 'products', 'shop_sync_error', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'products', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
+        self::markTestProducts($pdo);
         self::addColumnIfNotExists($pdo, 'import_logs', 'status', "TEXT NOT NULL DEFAULT 'running'");
         self::markPhase4CompetitorsAsTest($pdo);
         self::ensureOwnShopCompetitor($pdo);
@@ -97,6 +99,24 @@ class Database
         self::addColumnIfNotExists($pdo, 'price_snapshots', 'created_at', 'DATETIME');
         self::backfillSnapshotCreatedAt($pdo);
         self::ensureSnapshotIndexes($pdo);
+    }
+
+    private static function markTestProducts(PDO $pdo): void
+    {
+        $testPzns = [
+            '00012345',
+            '11111111',
+            '12345678',
+            '22222222',
+            '55555555',
+            '77777777',
+            '99999999',
+        ];
+
+        $stmt = $pdo->prepare('UPDATE products SET is_test = 1 WHERE pzn = :pzn');
+        foreach ($testPzns as $pzn) {
+            $stmt->execute(['pzn' => $pzn]);
+        }
     }
 
     private static function backfillSnapshotCreatedAt(PDO $pdo): void

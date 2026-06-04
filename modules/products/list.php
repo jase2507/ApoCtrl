@@ -5,11 +5,17 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $products */
 /** @var string $search */
 /** @var string $activeFilter */
+/** @var bool $showTest */
 ?>
 <div class="page-header page-header-row">
     <div>
         <h1>Produkte</h1>
-        <p class="page-subtitle"><?= count($products) ?> Produkt(e) gefunden</p>
+        <p class="page-subtitle">
+            <?= count($products) ?> Produkt(e) gefunden
+            <?php if (!$showTest): ?>
+                <span class="text-muted">(ohne Testdaten)</span>
+            <?php endif; ?>
+        </p>
     </div>
     <a href="products.php?action=create" class="btn btn-primary">Neues Produkt</a>
 </div>
@@ -34,8 +40,14 @@ declare(strict_types=1);
             <option value="inactive" <?= $activeFilter === 'inactive' ? 'selected' : '' ?>>Inaktiv</option>
         </select>
     </div>
+    <div class="toolbar-group form-group-check">
+        <label class="checkbox-label">
+            <input type="checkbox" name="show_test" value="1" <?= $showTest ? 'checked' : '' ?>>
+            Testdaten anzeigen
+        </label>
+    </div>
     <button type="submit" class="btn btn-secondary">Filtern</button>
-    <?php if ($search !== '' || $activeFilter !== 'all'): ?>
+    <?php if ($search !== '' || $activeFilter !== 'all' || $showTest): ?>
         <a href="products.php" class="btn btn-secondary">Zurücksetzen</a>
     <?php endif; ?>
 </form>
@@ -63,7 +75,12 @@ declare(strict_types=1);
                 <?php else: ?>
                     <?php foreach ($products as $product): ?>
                         <tr class="<?= (int) $product['active'] === 0 ? 'row-inactive' : '' ?>">
-                            <td><code><?= e((string) ($product['pzn'] ?? '')) ?></code></td>
+                            <td>
+                                <code><?= e((string) ($product['pzn'] ?? '')) ?></code>
+                                <?php if ((int) ($product['is_test'] ?? 0) === 1): ?>
+                                    <span class="badge badge-test">Test</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= e((string) ($product['name'] ?? '')) ?></td>
                             <td><?= e((string) ($product['manufacturer'] ?? '—')) ?></td>
                             <td><?= e(formatMoney($product['sale_price'] !== null ? (float) $product['sale_price'] : null)) ?></td>

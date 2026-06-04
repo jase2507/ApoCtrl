@@ -11,13 +11,15 @@ class RankingRepository
     /**
      * @return list<array{id:int,pzn:string,name:string}>
      */
-    public function listProducts(): array
+    public function listProducts(bool $includeTest = false): array
     {
-        $stmt = $this->pdo->query(
-            'SELECT id, pzn, name FROM products ORDER BY pzn ASC'
-        );
+        $sql = 'SELECT id, pzn, name FROM products';
+        if (!$includeTest) {
+            $sql .= ' WHERE is_test = 0';
+        }
+        $sql .= ' ORDER BY pzn ASC';
 
-        return $stmt->fetchAll();
+        return $this->pdo->query($sql)->fetchAll();
     }
 
     public function findProductByPzn(string $pzn): ?array
@@ -34,20 +36,25 @@ class RankingRepository
     /**
      * @return list<array{product_id:int,captured_at:string}>
      */
-    public function fetchGroups(?int $productId = null): array
+    public function fetchGroups(?int $productId = null, bool $includeTest = false): array
     {
-        $sql = 'SELECT product_id, captured_at
-                FROM price_snapshots
-                WHERE captured_at IS NOT NULL';
+        $sql = 'SELECT ps.product_id, ps.captured_at
+                FROM price_snapshots ps
+                INNER JOIN products p ON p.id = ps.product_id
+                WHERE ps.captured_at IS NOT NULL';
         $params = [];
 
+        if (!$includeTest && $productId === null) {
+            $sql .= ' AND p.is_test = 0';
+        }
+
         if ($productId !== null) {
-            $sql .= ' AND product_id = :product_id';
+            $sql .= ' AND ps.product_id = :product_id';
             $params['product_id'] = $productId;
         }
 
-        $sql .= ' GROUP BY product_id, captured_at
-                  ORDER BY captured_at DESC, product_id ASC';
+        $sql .= ' GROUP BY ps.product_id, ps.captured_at
+                  ORDER BY ps.captured_at DESC, ps.product_id ASC';
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -72,6 +79,7 @@ class RankingRepository
                 ps.captured_at,
                 p.pzn,
                 p.name AS product_name,
+                p.is_test AS product_is_test,
                 c.name AS competitor_name,
                 c.type AS competitor_type
              FROM price_snapshots ps
@@ -117,8 +125,11 @@ class RankingRepository
     /**
      * @return list<array<string,mixed>>
      */
-    public function fetchLatestRankingRows(?string $filter): array
+    public function fetchLatestRankingRows(?string $filter, bool $includeTest = false): array
     {
+        $testFilter = $includeTest ? '' : ' AND p.is_test = 0';
+        $latestTestFilter = $includeTest ? '' : ' AND p2.is_test = 0';
+
         $sql = '
             SELECT
                 ps.id,
@@ -131,19 +142,21 @@ class RankingRepository
                 ps.captured_at,
                 p.pzn,
                 p.name AS product_name,
+                p.is_test AS product_is_test,
                 c.name AS competitor_name,
                 c.type AS competitor_type
             FROM price_snapshots ps
             INNER JOIN (
-                SELECT product_id, MAX(captured_at) AS latest_captured_at
-                FROM price_snapshots
-                GROUP BY product_id
+                SELECT ps2.product_id, MAX(ps2.captured_at) AS latest_captured_at
+                FROM price_snapshots ps2
+                INNER JOIN products p2 ON p2.id = ps2.product_id
+                WHERE 1=1' . $latestTestFilter . '
+                GROUP BY ps2.product_id
             ) latest ON latest.product_id = ps.product_id
                     AND latest.latest_captured_at = ps.captured_at
             INNER JOIN products p ON p.id = ps.product_id
             INNER JOIN competitors c ON c.id = ps.competitor_id
-            WHERE 1=1
-        ';
+            WHERE 1=1' . $testFilter;
         $params = [];
 
         if ($filter !== null && $filter !== '') {
