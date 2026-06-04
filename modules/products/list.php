@@ -6,6 +6,8 @@ declare(strict_types=1);
 /** @var string $search */
 /** @var string $activeFilter */
 /** @var bool $showTest */
+/** @var bool $isAdmin */
+$isAdmin = $isAdmin ?? false;
 ?>
 <div class="page-header page-header-row">
     <div>
@@ -101,6 +103,23 @@ declare(strict_types=1);
                                         <input type="hidden" name="action" value="deactivate">
                                         <input type="hidden" name="id" value="<?= (int) $product['id'] ?>">
                                         <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Produkt wirklich deaktivieren?');">Deaktivieren</button>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if ($isAdmin): ?>
+                                    <?php
+                                    $deleteConfirm = 'Produkt: ' . (string) ($product['name'] ?? '')
+                                        . "\nPZN: " . (string) ($product['pzn'] ?? '')
+                                        . "\n\nWirklich löschen?";
+                                    ?>
+                                    <form method="post" action="products.php" class="inline-form">
+                                        <?= Csrf::field() ?>
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="id" value="<?= (int) $product['id'] ?>">
+                                        <button
+                                            type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm(<?= json_encode($deleteConfirm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>);"
+                                        >Löschen</button>
                                     </form>
                                 <?php endif; ?>
                             </td>

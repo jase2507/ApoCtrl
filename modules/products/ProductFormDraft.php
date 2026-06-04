@@ -40,4 +40,19 @@ class ProductFormDraft
 
         return $product;
     }
+
+    /**
+     * Vor neuer PZN-Suche: Shop-Autofill-Felder leeren, damit keine Daten einer früheren PZN erhalten bleiben.
+     *
+     * @param array<string, mixed> $draft
+     * @return array<string, mixed>
+     */
+    public static function clearShopAutofillFields(array $draft): array
+    {
+        foreach (['name', 'manufacturer', 'package_size', 'shop_url', 'avp_price', 'sale_price'] as $field) {
+            $draft[$field] = '';
+        }
+
+        return $draft;
+    }
 }

@@ -125,7 +125,11 @@ $deeplinkTemplate = (string) ($shopConfig['deeplink_template'] ?? 'https://shop.
                     <h3>Debug (PZN-Autofill)</h3>
                     <ul class="status-list">
                         <li>Quelle: <strong><?= e((string) ($autofillDebug['source'] ?? 'page+feed')) ?></strong></li>
-                        <li>PZN: <strong><?= e((string) ($autofillDebug['pzn'] ?? '')) ?></strong></li>
+                        <li>Angefragte PZN: <strong><?= e((string) ($autofillDebug['requested_pzn'] ?? $autofillDebug['pzn'] ?? '')) ?></strong></li>
+                        <li>Geparste PZN: <strong><?= e((string) ($autofillDebug['parsed_pzn'] ?? '—')) ?></strong></li>
+                        <li>Übernommen: <strong><?= e((string) ($autofillDebug['übernommen'] ?? (!empty($autofillDebug['applied']) ? 'ja' : 'nein'))) ?></strong></li>
+                        <li>Produkt-URL: <code><?= e((string) ($autofillDebug['product_url'] ?? $autofillDebug['product_page_url'] ?? '')) ?></code></li>
+                        <li>Cache Hit (Produktseite): <strong><?= !empty($autofillDebug['cache_hit']) ? 'ja' : 'nein' ?></strong></li>
                         <li>Feed erreichbar: <strong><?= !empty($autofillDebug['feed_reachable']) ? 'ja' : 'nein' ?></strong></li>
                         <li>Feed gefunden: <strong><?= !empty($autofillDebug['feed_found']) ? 'ja' : 'nein' ?></strong></li>
                         <li>Feedpreis: <strong><?= isset($autofillDebug['feed_price']) ? e(formatMoney((float) $autofillDebug['feed_price'])) : '—' ?></strong></li>

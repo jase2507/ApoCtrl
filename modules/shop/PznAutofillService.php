@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/PznMatchGuard.php';
+
 class PznAutofillService
 {
     public function __construct(
@@ -115,15 +117,40 @@ class PznAutofillService
             return null;
         }
 
+        $parsed = is_array($resolved['parsed']) ? $resolved['parsed'] : null;
+        if ($parsed !== null) {
+            $check = PznMatchGuard::validateParsedProduct($parsed, $pzn);
+            if (!$check['ok']) {
+                return $this->result(
+                    'error',
+                    (string) $check['message'],
+                    [],
+                    null,
+                    $resolved['product_url'] ?? null,
+                    PznMatchGuard::enrichDebug(
+                        is_array($debug) ? $debug : [],
+                        $pzn,
+                        $check['parsed_pzn'] ?? null,
+                        false,
+                        $resolved['product_url'] ?? null,
+                        'page+feed',
+                        !empty($debug['from_page_cache']),
+                    ),
+                );
+            }
+        }
+
         $hit = $resolved['hit'];
 
         return [
             'status' => 'single',
             'message' => (string) $resolved['message'],
             'hits' => [$hit],
-            'parsed' => $resolved['parsed'],
+            'parsed' => $parsed,
             'shop_url' => $resolved['product_url'],
-            'debug' => $debug,
+            'debug' => is_array($debug)
+                ? PznMatchGuard::enrichDebug($debug, $pzn, $parsed['pzn'] ?? null, true, $resolved['product_url'] ?? null, 'page+feed', !empty($debug['from_page_cache']))
+                : $debug,
         ];
     }
 
@@ -212,7 +239,13 @@ class PznAutofillService
             throw new RuntimeException($urlError);
         }
 
+        $requestedPzn = ShopHtmlParser::normalizePzn((string) ($draft['pzn'] ?? $hit['pzn'] ?? ''));
         $parsed = $this->resolveParsedFromHit($hit, $draft, $productHtmlOverride);
+        $check = PznMatchGuard::validateParsedProduct($parsed, $requestedPzn);
+        if (!$check['ok']) {
+            throw new RuntimeException((string) $check['message']);
+        }
+
         $merged = $this->merger->mergeDraft($draft, $parsed, $url, $overwrite);
 
         return [
@@ -255,6 +288,16 @@ class PznAutofillService
         }
 
         if ($runSync && $this->syncService !== null) {
+            $requestedPzn = ShopHtmlParser::normalizePzn((string) ($apply['parsed']['pzn'] ?? $draft['pzn'] ?? ''));
+            $syncCheck = PznMatchGuard::validateParsedProduct($apply['parsed'], $requestedPzn);
+            if (!$syncCheck['ok']) {
+                return [
+                    'success' => false,
+                    'message' => (string) $syncCheck['message'],
+                    'draft' => $draft,
+                ];
+            }
+
             if (!empty($hit['allow_feed_snapshot']) && isset($hit['parsed']) && is_array($hit['parsed'])) {
                 $parsedForSync = $hit['parsed'];
                 if (isset($hit['feed_price']) && $hit['feed_price'] !== null) {

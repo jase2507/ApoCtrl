@@ -294,6 +294,43 @@ class ProductRepository
         ]);
     }
 
+    /**
+     * Löscht Produkt inkl. zugehöriger Snapshots (Wettbewerber bleiben unverändert).
+     */
+    public function deleteProduct(int $id): bool
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $this->pdo->prepare('DELETE FROM price_snapshots WHERE product_id = :id')
+                ->execute(['id' => $id]);
+            $this->pdo->prepare('DELETE FROM own_price_snapshots WHERE product_id = :id')
+                ->execute(['id' => $id]);
+
+            $stmt = $this->pdo->prepare('DELETE FROM products WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+            $deleted = $stmt->rowCount() > 0;
+
+            if ($deleted) {
+                $this->pdo->commit();
+            } else {
+                $this->pdo->rollBack();
+            }
+
+            return $deleted;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
     public function recordShopSyncError(int $id, string $error): void
     {
         $stmt = $this->pdo->prepare(

@@ -143,6 +143,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($postAction === 'pzn-search' || $postAction === 'pzn-apply') {
         $draft = ProductFormDraft::fromPost($_POST);
+        if ($postAction === 'pzn-search') {
+            $draft = ProductFormDraft::clearShopAutofillFields($draft);
+        }
         $overwrite = !empty($_POST['autofill_overwrite']);
         $runSync = !empty($_POST['autofill_run_sync']);
         $productId = (int) post('id', '0');
@@ -185,7 +188,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $repository->recordShopSyncError($productId, $search['message']);
             }
 
-            if ($search['status'] === 'single' && is_array($search['parsed']) && $search['hits'] !== []) {
+            if (
+                $search['status'] === 'single'
+                && is_array($search['parsed'])
+                && $search['hits'] !== []
+                && PznMatchGuard::validateParsedProduct($search['parsed'], $draft['pzn'])['ok']
+            ) {
                 if ($productId > 0) {
                     $apply = $autofillService->applyHitToProduct(
                         $productId,
@@ -329,6 +337,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('products.php');
     }
 
+    if ($postAction === 'delete') {
+        Auth::requireAdmin();
+
+        $id = (int) post('id', '0');
+        $existing = $repository->findById($id);
+
+        if ($existing === null) {
+            flash('error', 'Produkt nicht gefunden.');
+            redirect('products.php');
+        }
+
+        try {
+            $deleted = $repository->deleteProduct($id);
+        } catch (Throwable $e) {
+            logError('Produkt löschen fehlgeschlagen: ' . $e->getMessage());
+            flash('error', 'Produkt konnte nicht gelöscht werden.');
+            redirect('products.php');
+        }
+
+        if (!$deleted) {
+            flash('error', 'Produkt konnte nicht gelöscht werden.');
+            redirect('products.php');
+        }
+
+        Auth::logAudit(
+            (int) $user['id'],
+            'product_delete',
+            sprintf(
+                'product_id=%d, pzn=%s, name=%s',
+                $id,
+                (string) ($existing['pzn'] ?? ''),
+                (string) ($existing['name'] ?? ''),
+            ),
+        );
+        flash('success', 'Produkt erfolgreich gelöscht.');
+        redirect('products.php');
+    }
+
     flash('error', 'Unbekannte Aktion.');
     redirect('products.php');
 }
@@ -346,8 +392,18 @@ match ($action) {
         $products = $repository->findAll($search !== '' ? $search : null, $activeFilter, $showTest);
         $pageTitle = 'Produkte';
 
+        $isAdmin = Auth::isAdmin();
+
         renderLayout('modules/products/list.php', compact(
-            'pageTitle', 'currentNav', 'user', 'config', 'products', 'search', 'activeFilter', 'showTest'
+            'pageTitle',
+            'currentNav',
+            'user',
+            'config',
+            'products',
+            'search',
+            'activeFilter',
+            'showTest',
+            'isAdmin',
         ));
     })(),
 

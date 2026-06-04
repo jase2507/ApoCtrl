@@ -181,6 +181,22 @@ class Auth
         }
     }
 
+    public static function isAdmin(): bool
+    {
+        $user = self::getUser();
+
+        return $user !== null
+            && strcasecmp((string) ($user['role'] ?? ''), 'Admin') === 0;
+    }
+
+    public static function requireAdmin(): void
+    {
+        if (!self::isAdmin()) {
+            flash('error', 'Keine Berechtigung für diese Aktion.');
+            redirect('products.php');
+        }
+    }
+
     /**
      * Prüft, ob der Admin noch das bekannte Standard-Passwort (admin/admin123) nutzt.
      */

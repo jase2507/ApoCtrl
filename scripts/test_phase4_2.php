@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/modules/products/ProductFormDraft.php';
 require_once dirname(__DIR__) . '/modules/products/ProductAutofillMerger.php';
 require_once dirname(__DIR__) . '/modules/shop/ShopUrlValidator.php';
 require_once dirname(__DIR__) . '/modules/shop/ShopSearchParser.php';
+require_once dirname(__DIR__) . '/modules/shop/PznMatchGuard.php';
 require_once dirname(__DIR__) . '/modules/shop/ShopHtmlParser.php';
 require_once dirname(__DIR__) . '/modules/shop/ShopFetcher.php';
 require_once dirname(__DIR__) . '/modules/shop/OwnShopFeedFetcher.php';

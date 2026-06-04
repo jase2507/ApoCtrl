@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/PznMatchGuard.php';
+
 class ShopHtmlParser
 {
     /**
@@ -20,14 +22,14 @@ class ShopHtmlParser
         if ($expectedPzn !== null && $expectedPzn !== '') {
             $detail = $this->parseProductDetailPage($html, $expectedPzn);
             if ($detail !== null) {
-                return $detail;
+                return $this->finalizeParsed($detail, $expectedPzn);
             }
         }
 
         if ($this->hasModernMarkup($html)) {
             $modern = $this->parseModern($html, $expectedPzn);
             if ($modern !== null) {
-                return $modern;
+                return $this->finalizeParsed($modern, $expectedPzn);
             }
         }
 
@@ -56,7 +58,7 @@ class ShopHtmlParser
             $productName = $packageSize;
         }
 
-        return [
+        return $this->finalizeParsed([
             'product_name' => $productName,
             'manufacturer' => $manufacturer,
             'package_size' => $packageSize,
@@ -64,7 +66,43 @@ class ShopHtmlParser
             'price' => $priceRaw !== null ? self::parseGermanPrice($priceRaw) : null,
             'avp_price' => $avpRaw !== null ? self::parseGermanPrice($avpRaw) : null,
             'delivery_status' => $this->mapAvailability($availabilityRaw ?? $block),
-        ];
+        ], $expectedPzn);
+    }
+
+    /**
+     * @param array{
+     *   product_name:?string,
+     *   manufacturer:?string,
+     *   package_size:?string,
+     *   pzn:?string,
+     *   price:?float,
+     *   avp_price:?float,
+     *   delivery_status:?string
+     * } $parsed
+     * @return array{
+     *   product_name:?string,
+     *   manufacturer:?string,
+     *   package_size:?string,
+     *   pzn:?string,
+     *   price:?float,
+     *   avp_price:?float,
+     *   delivery_status:?string
+     * }
+     */
+    private function finalizeParsed(array $parsed, ?string $expectedPzn): array
+    {
+        if ($expectedPzn === null || trim($expectedPzn) === '') {
+            return $parsed;
+        }
+
+        $check = PznMatchGuard::validateParsedProduct($parsed, $expectedPzn);
+        if (!$check['ok']) {
+            throw new RuntimeException((string) $check['message']);
+        }
+
+        $parsed['pzn'] = $check['requested_pzn'];
+
+        return $parsed;
     }
 
     private function hasModernMarkup(string $html): bool
@@ -126,6 +164,10 @@ class ShopHtmlParser
         $avpRaw = $this->matchModernPrice($block, 'listPrice');
         $availabilityRaw = $this->matchModernAvailability($block);
 
+        if ($needle !== null && ($pzn === null || !PznMatchGuard::matches($needle, $pzn))) {
+            return null;
+        }
+
         return [
             'product_name' => $productName,
             'manufacturer' => $manufacturer,
@@ -160,11 +202,17 @@ class ShopHtmlParser
         if ($pzn === null && preg_match('/itemprop=["\']sku["\'][^>]+content=["\'](\d{7,8})["\']/iu', $block, $sku) === 1) {
             $pzn = (string) ($sku[1] ?? '');
         }
-        if ($pzn !== null) {
-            $pzn = self::normalizePzn($pzn);
-            if ($pzn !== $needle && ltrim($pzn, '0') !== ltrim($needle, '0')) {
-                return null;
-            }
+        if ($pzn === null && preg_match('/itemprop=["\']productID["\'][^>]*>\s*(\d{7,8})\s*</iu', $block, $pid) === 1) {
+            $pzn = (string) ($pid[1] ?? '');
+        }
+
+        if ($pzn === null) {
+            return null;
+        }
+
+        $pzn = self::normalizePzn($pzn);
+        if (!PznMatchGuard::matches($needle, $pzn)) {
+            return null;
         }
 
         $manufacturer = $this->matchModernDd($block, 'producer');
@@ -191,11 +239,15 @@ class ShopHtmlParser
         $avpRaw = $this->matchModernPrice($priceBlock, 'listPrice');
         $availabilityRaw = $this->matchModernAvailability($block);
 
+        if ($pzn !== null && $needle !== null && !PznMatchGuard::matches($needle, $pzn)) {
+            return null;
+        }
+
         return [
             'product_name' => $productName,
             'manufacturer' => $manufacturer,
             'package_size' => $packageSize,
-            'pzn' => $needle,
+            'pzn' => $pzn,
             'price' => $priceRaw !== null ? self::parseGermanPrice($priceRaw) : null,
             'avp_price' => $avpRaw !== null ? self::parseGermanPrice($avpRaw) : null,
             'delivery_status' => $this->mapAvailability($availabilityRaw ?? $block),
@@ -285,14 +337,6 @@ class ShopHtmlParser
             $match
         ) === 1) {
             return (string) $match[0];
-        }
-
-        if (preg_match_all(
-            '/<dl[^>]+class=["\']productPrice["\'][\s\S]*?<\/dl>/iu',
-            $block,
-            $allPrices
-        ) >= 1) {
-            return (string) end($allPrices[0]);
         }
 
         return null;

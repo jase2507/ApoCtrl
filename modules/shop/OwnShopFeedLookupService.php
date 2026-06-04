@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/PznMatchGuard.php';
+
 class OwnShopFeedLookupService
 {
     /** @var array<string, array<string, mixed>>|null */
@@ -30,6 +32,7 @@ class OwnShopFeedLookupService
         private readonly string $feedUrl,
         private readonly string $feedLastUpdateUrl,
         private readonly string $deeplinkTemplate,
+        private readonly ?OwnShopProductPageCache $productPageCache = null,
     ) {
     }
 
@@ -139,39 +142,60 @@ class OwnShopFeedLookupService
         $pageResult = $this->fetchProductPage($productUrl, $normalized, $productHtmlOverride);
         $pageParsed = $pageResult['parsed'];
         $pageOk = $pageResult['ok'] && is_array($pageParsed);
+        $pznCheck = is_array($pageParsed)
+            ? PznMatchGuard::validateParsedProduct($pageParsed, $normalized)
+            : ['ok' => false, 'message' => PznMatchGuard::MISMATCH_MESSAGE, 'requested_pzn' => $normalized, 'parsed_pzn' => null];
+
+        if ($pageOk && !$pznCheck['ok']) {
+            $pageOk = false;
+            $pageParsed = null;
+            $pageResult['error'] = (string) ($pznCheck['message'] ?? PznMatchGuard::MISMATCH_MESSAGE);
+        }
 
         $feedState = $this->loadFeedState($feedCsvOverride, $feedLastUpdateOverride, $normalized);
         $feedReachable = $feedState['reachable'];
         $feedFound = $feedState['found'];
         $feedPrice = $feedState['price'];
 
-        $this->lastResolveDebug = array_merge(
-            [
-                'source' => 'page+feed',
-                'pzn' => $normalized,
-                'feed_url' => $this->feedUrl,
-                'feed_reachable' => $feedReachable,
-                'feed_found' => $feedFound,
-                'feed_price' => $feedPrice,
-                'from_cache' => $feedState['from_cache'],
-                'product_page_url' => $productUrl,
-                'page_ok' => $pageOk,
-                'parsed_product_name' => is_array($pageParsed) ? ($pageParsed['product_name'] ?? null) : null,
-                'parsed_manufacturer' => is_array($pageParsed) ? ($pageParsed['manufacturer'] ?? null) : null,
-                'parsed_package_size' => is_array($pageParsed) ? ($pageParsed['package_size'] ?? null) : null,
-                'parsed_price' => is_array($pageParsed) ? ($pageParsed['price'] ?? null) : null,
-                'parsed_avp' => is_array($pageParsed) ? ($pageParsed['avp_price'] ?? null) : null,
-                'merged_price' => null,
-                'warning' => $feedState['hint'],
-            ],
-            $pageResult['diagnostics'] ?? [],
+        $this->lastResolveDebug = PznMatchGuard::enrichDebug(
+            array_merge(
+                [
+                    'source' => 'page+feed',
+                    'pzn' => $normalized,
+                    'feed_url' => $this->feedUrl,
+                    'feed_reachable' => $feedReachable,
+                    'feed_found' => $feedFound,
+                    'feed_price' => $feedPrice,
+                    'from_cache' => $feedState['from_cache'],
+                    'product_page_url' => $productUrl,
+                    'page_ok' => $pageOk,
+                    'parsed_product_name' => is_array($pageParsed) ? ($pageParsed['product_name'] ?? null) : null,
+                    'parsed_manufacturer' => is_array($pageParsed) ? ($pageParsed['manufacturer'] ?? null) : null,
+                    'parsed_package_size' => is_array($pageParsed) ? ($pageParsed['package_size'] ?? null) : null,
+                    'parsed_price' => is_array($pageParsed) ? ($pageParsed['price'] ?? null) : null,
+                    'parsed_avp' => is_array($pageParsed) ? ($pageParsed['avp_price'] ?? null) : null,
+                    'merged_price' => null,
+                    'warning' => $feedState['hint'],
+                ],
+                $pageResult['diagnostics'] ?? [],
+            ),
+            $normalized,
+            $pznCheck['parsed_pzn'] ?? null,
+            false,
+            $productUrl,
+            'page+feed',
+            !empty($pageResult['from_page_cache']),
         );
 
         if (!$pageOk) {
+            $message = str_contains((string) ($pageResult['error'] ?? ''), 'PZN-Abgleich')
+                ? (string) $pageResult['error']
+                : 'Produktseite konnte nicht abgerufen werden.'
+                    . ($pageResult['error'] !== null ? ' ' . $pageResult['error'] : '');
+
             return [
                 'status' => 'error',
-                'message' => 'Produktseite konnte nicht abgerufen werden.'
-                    . ($pageResult['error'] !== null ? ' ' . $pageResult['error'] : ''),
+                'message' => $message,
                 'feed_found' => $feedFound,
                 'feed_price' => $feedPrice,
                 'product_url' => $productUrl,
@@ -185,6 +209,15 @@ class OwnShopFeedLookupService
 
         $merged = $this->mergePageWithOptionalFeed($pageParsed, $feedPrice, $normalized);
         $this->lastResolveDebug['merged_price'] = $merged['price'] ?? null;
+        $this->lastResolveDebug = PznMatchGuard::enrichDebug(
+            $this->lastResolveDebug,
+            $normalized,
+            $merged['pzn'] ?? null,
+            true,
+            $productUrl,
+            'page+feed',
+            !empty($pageResult['from_page_cache']),
+        );
         $message = $this->buildSuccessMessage($feedReachable, $feedFound, $feedPrice, $feedState['hint']);
 
         return [
@@ -281,7 +314,7 @@ class OwnShopFeedLookupService
             'product_name' => $pageParsed['product_name'] ?? null,
             'manufacturer' => $pageParsed['manufacturer'] ?? null,
             'package_size' => $pageParsed['package_size'] ?? null,
-            'pzn' => $pzn,
+            'pzn' => $pageParsed['pzn'] ?? $pzn,
             'price' => $feedPrice ?? $pageParsed['price'] ?? null,
             'avp_price' => $pageParsed['avp_price'] ?? null,
             'delivery_status' => $pageParsed['delivery_status'] ?? null,
@@ -358,68 +391,102 @@ class OwnShopFeedLookupService
      */
     private function fetchProductPage(string $productUrl, string $pzn, ?string $htmlOverride): array
     {
-        if ($htmlOverride !== null && $htmlOverride !== '') {
-            try {
-                $parsed = $this->htmlParser->parse($htmlOverride, $pzn);
+        $fromPageCache = false;
 
-                return [
-                    'ok' => true,
-                    'http_code' => 200,
-                    'error' => null,
-                    'parsed' => $parsed,
-                    'diagnostics' => $this->diagnosticsFromFetch([
-                        'ok' => true,
-                        'http_code' => 200,
-                        'effective_url' => $productUrl,
-                        'content_length' => strlen($htmlOverride),
-                        'transport' => 'override',
-                        'error' => null,
-                    ]),
-                ];
-            } catch (Throwable $e) {
+        if ($htmlOverride !== null && $htmlOverride !== '') {
+            return $this->parseProductHtml($htmlOverride, $pzn, $productUrl, false, [
+                'ok' => true,
+                'http_code' => 200,
+                'effective_url' => $productUrl,
+                'content_length' => strlen($htmlOverride),
+                'transport' => 'override',
+                'error' => null,
+            ]);
+        }
+
+        $html = null;
+        if ($this->productPageCache !== null) {
+            $html = $this->productPageCache->read($pzn);
+            $fromPageCache = $html !== null;
+        }
+
+        if ($html === null) {
+            $fetch = $this->pageFetcher->fetch($productUrl);
+            $diagnostics = $this->diagnosticsFromFetch($fetch);
+
+            if (!$fetch['ok']) {
                 return [
                     'ok' => false,
-                    'http_code' => null,
-                    'error' => $e->getMessage(),
+                    'http_code' => $fetch['http_code'] ?? null,
+                    'error' => (string) ($fetch['error'] ?? 'Produktseite konnte nicht geladen werden.'),
                     'parsed' => null,
-                    'diagnostics' => $this->diagnosticsFromFetch([
-                        'ok' => false,
-                        'effective_url' => $productUrl,
-                        'error' => $e->getMessage(),
-                    ]),
+                    'from_page_cache' => false,
+                    'diagnostics' => $diagnostics,
                 ];
             }
+
+            $html = (string) $fetch['html'];
+            $parsedResult = $this->parseProductHtml($html, $pzn, $productUrl, false, $fetch);
+            if ($parsedResult['ok'] && $this->productPageCache !== null) {
+                $this->productPageCache->write($pzn, $html);
+            }
+
+            $parsedResult['from_page_cache'] = false;
+
+            return $parsedResult;
         }
 
-        $fetch = $this->pageFetcher->fetch($productUrl);
-        $diagnostics = $this->diagnosticsFromFetch($fetch);
+        $cachedResult = $this->parseProductHtml($html, $pzn, $productUrl, true, [
+            'ok' => true,
+            'http_code' => 200,
+            'effective_url' => $productUrl,
+            'content_length' => strlen($html),
+            'transport' => 'page_cache',
+            'error' => null,
+        ]);
+        $cachedResult['from_page_cache'] = $fromPageCache;
 
-        if (!$fetch['ok']) {
-            return [
-                'ok' => false,
-                'http_code' => $fetch['http_code'] ?? null,
-                'error' => (string) ($fetch['error'] ?? 'Produktseite konnte nicht geladen werden.'),
-                'parsed' => null,
-                'diagnostics' => $diagnostics,
-            ];
-        }
+        return $cachedResult;
+    }
+
+    /**
+     * @param array<string, mixed> $fetchMeta
+     * @return array{
+     *   ok:bool,
+     *   http_code:?int,
+     *   error:?string,
+     *   parsed:?array,
+     *   from_page_cache:bool,
+     *   diagnostics:array<string, mixed>
+     * }
+     */
+    private function parseProductHtml(
+        string $html,
+        string $pzn,
+        string $productUrl,
+        bool $fromPageCache,
+        array $fetchMeta,
+    ): array {
+        $diagnostics = $this->diagnosticsFromFetch($fetchMeta);
 
         try {
-            $parsed = $this->htmlParser->parse((string) $fetch['html'], $pzn);
+            $parsed = $this->htmlParser->parse($html, $pzn);
 
             return [
                 'ok' => true,
-                'http_code' => $fetch['http_code'] ?? null,
+                'http_code' => isset($fetchMeta['http_code']) ? (int) $fetchMeta['http_code'] : null,
                 'error' => null,
                 'parsed' => $parsed,
+                'from_page_cache' => $fromPageCache,
                 'diagnostics' => $diagnostics,
             ];
         } catch (Throwable $e) {
             return [
                 'ok' => false,
-                'http_code' => $fetch['http_code'] ?? null,
+                'http_code' => isset($fetchMeta['http_code']) ? (int) $fetchMeta['http_code'] : null,
                 'error' => $e->getMessage(),
                 'parsed' => null,
+                'from_page_cache' => $fromPageCache,
                 'diagnostics' => $diagnostics,
             ];
         }

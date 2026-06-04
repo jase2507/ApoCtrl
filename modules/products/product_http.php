@@ -7,6 +7,8 @@ require_once dirname(__DIR__) . '/shop/ShopSearchParser.php';
 require_once dirname(__DIR__) . '/shop/OwnShopFeedFetcher.php';
 require_once dirname(__DIR__) . '/shop/OwnShopFeedParser.php';
 require_once dirname(__DIR__) . '/shop/OwnShopFeedCache.php';
+require_once dirname(__DIR__) . '/shop/OwnShopProductPageCache.php';
+require_once dirname(__DIR__) . '/shop/PznMatchGuard.php';
 require_once dirname(__DIR__) . '/shop/OwnShopFeedLookupService.php';
 require_once dirname(__DIR__) . '/shop/PznAutofillService.php';
 require_once dirname(__DIR__) . '/shop/ShopSyncService.php';
@@ -123,9 +125,11 @@ if (!function_exists('createPznAutofillService')) {
 
         $feedLookup = null;
         if ($feedUrl !== null && $feedUrl !== '' && $feedLastUpdateUrl !== null && $feedLastUpdateUrl !== '') {
-            $importsDir = $storageRoot !== ''
-                ? rtrim($storageRoot, '/\\') . '/imports'
-                : dirname(__DIR__, 2) . '/storage/imports';
+            $storageBase = $storageRoot !== ''
+                ? rtrim($storageRoot, '/\\')
+                : dirname(__DIR__, 2) . '/storage';
+            $importsDir = $storageBase . '/imports';
+            $productPageCacheDir = $storageBase . '/cache/shop_products';
 
             $feedLookup = new OwnShopFeedLookupService(
                 new OwnShopFeedFetcher($fetchTimeout),
@@ -139,6 +143,7 @@ if (!function_exists('createPznAutofillService')) {
                 $deeplinkTemplate !== null && $deeplinkTemplate !== ''
                     ? $deeplinkTemplate
                     : 'https://shop.apotheker-seidel.de/product?artnr={PZN}',
+                new OwnShopProductPageCache($productPageCacheDir),
             );
         }
 
