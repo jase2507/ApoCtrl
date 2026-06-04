@@ -165,4 +165,51 @@ class CollectorRepository
 
         return $stmt->fetchAll() ?: [];
     }
+
+    public function saveCollectorLog(
+        ?int $runId,
+        string $pzn,
+        string $url,
+        ?int $httpCode,
+        int $durationMs,
+        string $status,
+        ?string $errorMessage,
+    ): int {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO collector_logs (
+                run_id, pzn, url, http_code, duration_ms, status, error_message
+            ) VALUES (
+                :run_id, :pzn, :url, :http_code, :duration_ms, :status, :error_message
+            )'
+        );
+        $stmt->execute([
+            'run_id' => $runId,
+            'pzn' => trim($pzn),
+            'url' => $url,
+            'http_code' => $httpCode,
+            'duration_ms' => max(0, $durationMs),
+            'status' => $status,
+            'error_message' => $errorMessage,
+        ]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function getLatestCollectorLogs(int $limit = 20): array
+    {
+        $limit = max(1, min(100, $limit));
+        $stmt = $this->pdo->prepare(
+            'SELECT id, run_id, pzn, url, http_code, duration_ms, status, error_message, created_at
+             FROM collector_logs
+             ORDER BY id DESC
+             LIMIT :limit'
+        );
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll() ?: [];
+    }
 }

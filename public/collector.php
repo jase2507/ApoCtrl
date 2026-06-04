@@ -15,6 +15,7 @@ $pdo = Database::getConnection();
 $service = createCollectorService($pdo, $config);
 $collectorConfig = is_array($config['collector'] ?? null) ? $config['collector'] : [];
 $mockMode = filter_var($collectorConfig['mock_mode'] ?? true, FILTER_VALIDATE_BOOL);
+$collectorDebug = filter_var($collectorConfig['debug'] ?? false, FILTER_VALIDATE_BOOL);
 
 $singleResult = $_SESSION['collector_single_result'] ?? null;
 unset($_SESSION['collector_single_result']);
@@ -76,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $lastRun = $service->getLastRun();
 $recentRuns = $service->getRecentRuns(15);
+$latestLogs = $service->getLatestCollectorLogs(25);
 
 renderLayout('modules/collector/list.php', compact(
     'pageTitle',
@@ -84,7 +86,9 @@ renderLayout('modules/collector/list.php', compact(
     'config',
     'lastRun',
     'recentRuns',
+    'latestLogs',
     'mockMode',
+    'collectorDebug',
     'singleResult',
     'runSummary',
 ));

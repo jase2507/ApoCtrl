@@ -7,6 +7,8 @@ declare(strict_types=1);
 /** @var bool $mockMode */
 /** @var array<string, mixed>|null $singleResult */
 /** @var array<string, mixed>|null $runSummary */
+/** @var list<array<string, mixed>> $latestLogs */
+/** @var bool $collectorDebug */
 ?>
 <div class="page-header page-header-row">
     <div>
@@ -104,6 +106,53 @@ declare(strict_types=1);
         </div>
     </div>
 <?php endif; ?>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>Letzte Abrufe</h2>
+    </div>
+    <div class="panel-body">
+        <?php if ($collectorDebug): ?>
+            <p class="text-muted">Debug-Modus aktiv: Abrufdetails werden nach jedem Lauf in den Logs gespeichert (URL, HTTP, Dauer, Cache).</p>
+        <?php endif; ?>
+        <?php if (($latestLogs ?? []) === []): ?>
+            <p class="text-muted">Noch keine Abruf-Logs vorhanden.</p>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Zeit</th>
+                            <th>PZN</th>
+                            <th>HTTP</th>
+                            <th>Dauer</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($latestLogs as $log): ?>
+                            <tr>
+                                <td><?= e((string) ($log['created_at'] ?? '')) ?></td>
+                                <td><?= e((string) ($log['pzn'] ?? '')) ?></td>
+                                <td><?= e((string) ($log['http_code'] ?? '—')) ?></td>
+                                <td><?= (int) ($log['duration_ms'] ?? 0) ?> ms</td>
+                                <td>
+                                    <?= e((string) ($log['status'] ?? '')) ?>
+                                    <?php if ($collectorDebug && !empty($log['url'])): ?>
+                                        <br><small class="text-muted"><?= e((string) $log['url']) ?></small>
+                                    <?php endif; ?>
+                                    <?php if ($collectorDebug && !empty($log['error_message'])): ?>
+                                        <br><small class="text-muted"><?= e((string) $log['error_message']) ?></small>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
 
 <div class="panel">
     <div class="panel-header">

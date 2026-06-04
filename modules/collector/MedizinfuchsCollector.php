@@ -24,6 +24,13 @@ class MedizinfuchsCollector
      *   message:string
      * }
      */
+    public function setRunId(?int $runId): void
+    {
+        if ($this->provider instanceof MedizinfuchsProvider) {
+            $this->provider->setRunId($runId);
+        }
+    }
+
     public function collectProduct(array $product): array
     {
         $productId = (int) ($product['id'] ?? 0);
@@ -65,8 +72,7 @@ class MedizinfuchsCollector
                 continue;
             }
 
-            if ($ownCompetitor !== null
-                && strcasecmp($competitorName, (string) $ownCompetitor['name']) === 0) {
+            if ($this->isSkippedOwnShopCompetitor($competitorName, $ownCompetitor)) {
                 continue;
             }
 
@@ -133,6 +139,36 @@ class MedizinfuchsCollector
      *   message:string
      * }
      */
+    /**
+     * @param array<string, mixed>|null $ownCompetitor
+     */
+    private function isSkippedOwnShopCompetitor(string $competitorName, ?array $ownCompetitor): bool
+    {
+        $normalized = strtolower(trim($competitorName));
+        if ($normalized === '') {
+            return false;
+        }
+
+        $blocked = [
+            'apotheker seidel',
+            'eigener shop',
+            'shop.apotheker-seidel.de',
+        ];
+
+        foreach ($blocked as $needle) {
+            if ($normalized === $needle || str_contains($normalized, $needle)) {
+                return true;
+            }
+        }
+
+        if ($ownCompetitor !== null
+            && strcasecmp($competitorName, (string) ($ownCompetitor['name'] ?? '')) === 0) {
+            return true;
+        }
+
+        return false;
+    }
+
     private function result(
         int $productId,
         string $pzn,

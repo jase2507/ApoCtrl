@@ -66,8 +66,15 @@ return [
 
     'collector' => [
         // true = lokale HTML-Fixtures unter docs/examples/medizinfuchs_collector_{PZN}.html
-        'mock_mode' => true,
+        // false = HTTP-Abruf (URL-Template anpassen; Live-HTML kann vom Mock-Parser abweichen)
+        'mock_mode' => false,
+        'request_delay_ms' => 1000,
+        'cache_ttl_minutes' => 15,
+        'timeout' => 15,
         'fetch_timeout' => 15,
+        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ApoCtrl Collector',
         'medizinfuchs_url_template' => 'https://www.medizinfuchs.de/pzn/{PZN}',
+        'allow_insecure_ssl' => false,
+        'debug' => false,
     ],
 ];

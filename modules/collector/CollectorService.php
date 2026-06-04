@@ -32,6 +32,8 @@ class CollectorService
         $errors = 0;
         $details = [];
 
+        $this->collector->setRunId($runId);
+
         foreach ($products as $product) {
             $result = $this->collector->collectProduct($product);
             $productsProcessed++;
@@ -43,6 +45,8 @@ class CollectorService
 
             $details[] = $result;
         }
+
+        $this->collector->setRunId(null);
 
         $status = $this->resolveStatus($productsProcessed, $errors);
         $this->repository->finishCollectionRun($runId, [
@@ -106,7 +110,9 @@ class CollectorService
         }
 
         $runId = $this->repository->startCollectionRun();
+        $this->collector->setRunId($runId);
         $result = $this->collector->collectProduct($product);
+        $this->collector->setRunId(null);
 
         $status = $result['success'] ? 'success' : 'failed';
         $this->repository->finishCollectionRun($runId, [
@@ -137,6 +143,14 @@ class CollectorService
     public function getRecentRuns(int $limit = 10): array
     {
         return $this->repository->getRecentRuns($limit);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function getLatestCollectorLogs(int $limit = 20): array
+    {
+        return $this->repository->getLatestCollectorLogs($limit);
     }
 
     private function resolveStatus(int $productsProcessed, int $errors): string

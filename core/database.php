@@ -99,6 +99,26 @@ class Database
         self::addColumnIfNotExists($pdo, 'price_snapshots', 'created_at', 'DATETIME');
         self::backfillSnapshotCreatedAt($pdo);
         self::ensureSnapshotIndexes($pdo);
+        self::ensureCollectorLogsTable($pdo);
+    }
+
+    private static function ensureCollectorLogsTable(PDO $pdo): void
+    {
+        $pdo->exec(
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS collector_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER,
+    pzn TEXT,
+    url TEXT,
+    http_code INTEGER,
+    duration_ms INTEGER,
+    status TEXT,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+SQL
+        );
     }
 
     private static function markTestProducts(PDO $pdo): void
