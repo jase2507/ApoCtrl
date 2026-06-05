@@ -99,7 +99,9 @@ function navItems(): array
         'collector' => ['label' => 'Datenerfassung', 'url' => 'collector.php', 'phase' => 7],
         'alerts' => ['label' => 'Alerts', 'url' => '#', 'phase' => 2, 'disabled' => true],
         'reports' => ['label' => 'Reports', 'url' => '#', 'phase' => 2, 'disabled' => true],
-        'users' => ['label' => 'Benutzer', 'url' => '#', 'phase' => 2, 'disabled' => true],
+        'users' => Auth::isLoggedIn() && Auth::isAdmin()
+            ? ['label' => 'Benutzer', 'url' => 'users.php', 'phase' => 8]
+            : ['label' => 'Benutzer', 'url' => '#', 'phase' => 8, 'disabled' => true],
         'settings' => ['label' => 'Einstellungen', 'url' => '#', 'phase' => 2, 'disabled' => true],
     ];
 }

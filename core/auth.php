@@ -52,7 +52,7 @@ class Auth
         $pdo = Database::getConnection();
 
         $stmt = $pdo->prepare(
-            'SELECT id, username, password_hash, role, created_at
+            'SELECT id, username, password_hash, role, active, created_at
              FROM users
              WHERE username = :username
              LIMIT 1'
@@ -63,6 +63,13 @@ class Auth
         if (!$user || !password_verify($password, $user['password_hash'])) {
             LoginThrottle::recordFailure();
             self::logAudit(null, 'login_failed', 'Benutzername: ' . $username);
+
+            return false;
+        }
+
+        if ((int) ($user['active'] ?? 1) !== 1) {
+            LoginThrottle::recordFailure();
+            self::logAudit(null, 'login_failed', 'Deaktivierter Benutzer: ' . $username);
 
             return false;
         }

@@ -100,6 +100,19 @@ class Database
         self::backfillSnapshotCreatedAt($pdo);
         self::ensureSnapshotIndexes($pdo);
         self::ensureCollectorLogsTable($pdo);
+        self::addColumnIfNotExists($pdo, 'users', 'active', 'INTEGER NOT NULL DEFAULT 1');
+        self::addColumnIfNotExists($pdo, 'users', 'updated_at', 'DATETIME');
+        self::backfillUsersUpdatedAt($pdo);
+    }
+
+    private static function backfillUsersUpdatedAt(PDO $pdo): void
+    {
+        $pdo->exec(
+            "UPDATE users SET updated_at = created_at WHERE updated_at IS NULL OR updated_at = ''"
+        );
+        $pdo->exec(
+            'UPDATE users SET active = 1 WHERE active IS NULL'
+        );
     }
 
     private static function ensureCollectorLogsTable(PDO $pdo): void
@@ -299,16 +312,18 @@ SQL
         $username = (string) ($adminConfig['username'] ?? 'admin');
         $role = (string) ($adminConfig['role'] ?? 'Admin');
 
+        $now = date('Y-m-d H:i:s');
         $insert = $pdo->prepare(
-            'INSERT INTO users (username, password_hash, role, created_at)
-             VALUES (:username, :password_hash, :role, :created_at)'
+            'INSERT INTO users (username, password_hash, role, active, created_at, updated_at)
+             VALUES (:username, :password_hash, :role, 1, :created_at, :updated_at)'
         );
 
         $insert->execute([
             'username' => $username,
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'role' => $role,
-            'created_at' => date('Y-m-d H:i:s'),
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
     }
 }
