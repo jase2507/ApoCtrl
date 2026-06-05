@@ -102,6 +102,9 @@ function navItems(): array
         'users' => Auth::isLoggedIn() && Auth::isAdmin()
             ? ['label' => 'Benutzer', 'url' => 'users.php', 'phase' => 8]
             : ['label' => 'Benutzer', 'url' => '#', 'phase' => 8, 'disabled' => true],
+        'maintenance' => Auth::isLoggedIn() && Auth::isAdmin()
+            ? ['label' => 'Wartung', 'url' => 'maintenance.php', 'phase' => 8]
+            : ['label' => 'Wartung', 'url' => '#', 'phase' => 8, 'disabled' => true],
         'settings' => ['label' => 'Einstellungen', 'url' => '#', 'phase' => 2, 'disabled' => true],
     ];
 }
