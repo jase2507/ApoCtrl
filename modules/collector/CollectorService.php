@@ -135,6 +135,10 @@ class CollectorService
             $response['parse_debug'] = $result['parse_debug'];
         }
 
+        if (isset($result['fetch_debug']) && is_array($result['fetch_debug'])) {
+            $response['fetch_debug'] = $result['fetch_debug'];
+        }
+
         return $response;
     }
 

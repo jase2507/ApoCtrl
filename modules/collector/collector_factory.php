@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/CollectorProviderInterface.php';
+require_once __DIR__ . '/MedizinfuchsUrlResolver.php';
 require_once __DIR__ . '/MedizinfuchsProvider.php';
 require_once __DIR__ . '/MedizinfuchsParser.php';
 require_once __DIR__ . '/CollectorRepository.php';
@@ -27,6 +28,10 @@ if (!function_exists('createCollectorService')) {
             $collectorConfig['medizinfuchs_url_template']
             ?? 'https://www.medizinfuchs.de/pzn/{PZN}'
         );
+        $searchUrlTemplate = (string) (
+            $collectorConfig['medizinfuchs_search_url_template']
+            ?? 'https://www.medizinfuchs.de/?params[search]={PZN}&params[search_cat]=1'
+        );
         $timeout = (int) ($collectorConfig['timeout'] ?? $collectorConfig['fetch_timeout'] ?? 15);
         $requestDelayMs = (int) ($collectorConfig['request_delay_ms'] ?? 1000);
         $cacheTtlMinutes = (int) ($collectorConfig['cache_ttl_minutes'] ?? 15);
@@ -47,6 +52,14 @@ if (!function_exists('createCollectorService')) {
         $snapshotService = new SnapshotService(new SnapshotRepository($pdo));
         $rankingEngine = new RankingEngine(new RankingRepository($pdo));
 
+        $urlResolver = new MedizinfuchsUrlResolver(
+            $searchUrlTemplate,
+            max(1, $timeout),
+            max(0, $requestDelayMs),
+            $userAgent,
+            $allowInsecureSsl,
+        );
+
         $provider = new MedizinfuchsProvider(
             $mockMode,
             $fixturesDir,
@@ -59,6 +72,7 @@ if (!function_exists('createCollectorService')) {
             $allowInsecureSsl,
             $fetchAjaxOffers,
             $collectorRepo,
+            $mockMode ? null : $urlResolver,
         );
         $medCollector = new MedizinfuchsCollector(
             $provider,

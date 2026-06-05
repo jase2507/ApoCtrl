@@ -23,6 +23,7 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         private readonly bool $allowInsecureSsl,
         private readonly bool $fetchAjaxOffers = true,
         private readonly ?CollectorRepository $logRepository = null,
+        private readonly ?MedizinfuchsUrlResolver $urlResolver = null,
     ) {
     }
 
@@ -54,6 +55,10 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         $this->lastFetchDebug = [
             'pzn' => $pzn,
             'url' => null,
+            'search_url' => null,
+            'resolved_url' => null,
+            'effective_url' => null,
+            'pzn_found' => null,
             'http_code' => null,
             'duration_ms' => null,
             'cache_hit' => false,
@@ -68,6 +73,10 @@ class MedizinfuchsProvider implements CollectorProviderInterface
                 $this->lastFetchDebug = [
                     'pzn' => $pzn,
                     'url' => 'mock:' . $pzn,
+                    'search_url' => null,
+                    'resolved_url' => null,
+                    'effective_url' => 'mock:' . $pzn,
+                    'pzn_found' => true,
                     'http_code' => 200,
                     'duration_ms' => (int) round((microtime(true) - $started) * 1000),
                     'cache_hit' => false,
@@ -88,39 +97,87 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             }
         }
 
-        $this->enforceRateLimit();
-
-        $url = $this->buildUrl($pzn);
-        $this->lastFetchDebug['url'] = $url;
-
         $cachePath = $this->cachePathForPzn($pzn);
         if ($this->isCacheValid($cachePath)) {
             $html = (string) file_get_contents($cachePath);
             if ($html !== '') {
                 $this->lastFetchDebug = [
                     'pzn' => $pzn,
-                    'url' => $url,
+                    'url' => null,
+                    'search_url' => null,
+                    'resolved_url' => null,
+                    'effective_url' => null,
+                    'pzn_found' => null,
                     'http_code' => 200,
                     'duration_ms' => 0,
                     'cache_hit' => true,
                     'status' => 'cache_hit',
                     'error' => null,
                 ];
-                $this->persistLog($pzn, $url, 200, 0, 'cache_hit', null);
+                $this->persistLog($pzn, 'cache:' . $pzn, 200, 0, 'cache_hit', null);
 
                 return $html;
             }
         }
 
+        $sourceUrl = null;
+        $resolvedUrl = null;
+        $resolveDebug = [];
+
+        if ($this->urlResolver !== null) {
+            $this->enforceRateLimit();
+            $resolvedUrl = $this->urlResolver->resolveProductUrl($pzn);
+            $resolveDebug = $this->urlResolver->getLastResolveDebug();
+            $sourceUrl = isset($resolveDebug['search_url']) ? (string) $resolveDebug['search_url'] : null;
+
+            if ($resolvedUrl === null) {
+                $message = 'Keine Medizinfuchs-Seite zur PZN gefunden.';
+                $this->lastFetchDebug = [
+                    'pzn' => $pzn,
+                    'url' => null,
+                    'search_url' => $sourceUrl,
+                    'resolved_url' => null,
+                    'effective_url' => $resolveDebug['effective_url'] ?? null,
+                    'pzn_found' => false,
+                    'http_code' => null,
+                    'duration_ms' => 0,
+                    'cache_hit' => false,
+                    'status' => 'error',
+                    'error' => $message,
+                ];
+                $this->persistLog(
+                    $pzn,
+                    $sourceUrl ?? '',
+                    null,
+                    0,
+                    'error',
+                    $message,
+                    null,
+                    $sourceUrl,
+                );
+                logError('Collector Live PZN ' . $pzn . ': ' . $message);
+
+                throw new RuntimeException($message);
+            }
+        }
+
+        $url = $resolvedUrl ?? $this->buildUrl($pzn);
+        $this->lastFetchDebug['url'] = $url;
+        $this->lastFetchDebug['search_url'] = $sourceUrl;
+        $this->lastFetchDebug['resolved_url'] = $resolvedUrl;
+        $this->lastFetchDebug['pzn_found'] = $resolveDebug['pzn_found'] ?? ($this->urlResolver === null ? null : true);
+
         $started = microtime(true);
         try {
+            $this->enforceRateLimit();
             $response = $this->httpFetch($url);
             $durationMs = (int) round((microtime(true) - $started) * 1000);
             $httpCode = (int) ($response['http_code'] ?? 0);
             $html = (string) ($response['html'] ?? '');
+            $effectiveUrl = (string) ($response['effective_url'] ?? $url);
 
             if ($this->fetchAjaxOffers) {
-                $html = $this->enrichWithAjaxOffers($html, $url);
+                $html = $this->enrichWithAjaxOffers($html, $effectiveUrl);
             }
 
             $httpRejected = $httpCode > 0 && ($httpCode < 200 || $httpCode >= 400);
@@ -129,13 +186,26 @@ class MedizinfuchsProvider implements CollectorProviderInterface
                 $this->lastFetchDebug = [
                     'pzn' => $pzn,
                     'url' => $url,
+                    'search_url' => $sourceUrl,
+                    'resolved_url' => $resolvedUrl,
+                    'effective_url' => $effectiveUrl,
+                    'pzn_found' => $resolveDebug['pzn_found'] ?? true,
                     'http_code' => $httpCode > 0 ? $httpCode : null,
                     'duration_ms' => $durationMs,
                     'cache_hit' => false,
                     'status' => 'error',
                     'error' => $message,
                 ];
-                $this->persistLog($pzn, $url, $httpCode > 0 ? $httpCode : null, $durationMs, 'error', $message);
+                $this->persistLog(
+                    $pzn,
+                    $effectiveUrl,
+                    $httpCode > 0 ? $httpCode : null,
+                    $durationMs,
+                    'error',
+                    $message,
+                    $resolvedUrl,
+                    $sourceUrl,
+                );
                 logError('Collector Live PZN ' . $pzn . ' HTTP ' . $httpCode . ': ' . $message);
 
                 throw new RuntimeException('HTTP ' . ($httpCode > 0 ? $httpCode : '—') . ': ' . $message);
@@ -146,13 +216,26 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             $this->lastFetchDebug = [
                 'pzn' => $pzn,
                 'url' => $url,
+                'search_url' => $sourceUrl,
+                'resolved_url' => $resolvedUrl,
+                'effective_url' => $effectiveUrl,
+                'pzn_found' => $resolveDebug['pzn_found'] ?? true,
                 'http_code' => $httpCode,
                 'duration_ms' => $durationMs,
                 'cache_hit' => false,
                 'status' => 'ok',
                 'error' => null,
             ];
-            $this->persistLog($pzn, $url, $httpCode, $durationMs, 'ok', null);
+            $this->persistLog(
+                $pzn,
+                $effectiveUrl,
+                $httpCode,
+                $durationMs,
+                'ok',
+                null,
+                $resolvedUrl,
+                $sourceUrl,
+            );
 
             return $html;
         } catch (Throwable $e) {
@@ -161,13 +244,26 @@ class MedizinfuchsProvider implements CollectorProviderInterface
                 $this->lastFetchDebug = [
                     'pzn' => $pzn,
                     'url' => $url,
+                    'search_url' => $sourceUrl,
+                    'resolved_url' => $resolvedUrl,
+                    'effective_url' => null,
+                    'pzn_found' => $resolveDebug['pzn_found'] ?? false,
                     'http_code' => null,
                     'duration_ms' => $durationMs,
                     'cache_hit' => false,
                     'status' => 'error',
                     'error' => $e->getMessage(),
                 ];
-                $this->persistLog($pzn, $url, null, $durationMs, 'error', $e->getMessage());
+                $this->persistLog(
+                    $pzn,
+                    $url,
+                    null,
+                    $durationMs,
+                    'error',
+                    $e->getMessage(),
+                    $resolvedUrl,
+                    $sourceUrl,
+                );
             }
             logError('Collector Live PZN ' . $pzn . ': ' . $e->getMessage());
             throw $e;
@@ -466,6 +562,8 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         int $durationMs,
         string $status,
         ?string $errorMessage,
+        ?string $resolvedUrl = null,
+        ?string $sourceUrl = null,
     ): void {
         if ($this->logRepository === null) {
             return;
@@ -480,6 +578,8 @@ class MedizinfuchsProvider implements CollectorProviderInterface
                 $durationMs,
                 $status,
                 $errorMessage,
+                $resolvedUrl,
+                $sourceUrl,
             );
         } catch (Throwable $e) {
             logError('collector_logs speichern fehlgeschlagen: ' . $e->getMessage());

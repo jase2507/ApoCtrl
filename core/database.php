@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS collector_logs (
     run_id INTEGER,
     pzn TEXT,
     url TEXT,
+    resolved_url TEXT,
+    source_url TEXT,
     http_code INTEGER,
     duration_ms INTEGER,
     status TEXT,
@@ -132,6 +134,8 @@ CREATE TABLE IF NOT EXISTS collector_logs (
 )
 SQL
         );
+        self::addColumnIfNotExists($pdo, 'collector_logs', 'resolved_url', 'TEXT');
+        self::addColumnIfNotExists($pdo, 'collector_logs', 'source_url', 'TEXT');
     }
 
     private static function markTestProducts(PDO $pdo): void

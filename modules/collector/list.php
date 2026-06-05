@@ -10,7 +10,9 @@ declare(strict_types=1);
 /** @var list<array<string, mixed>> $latestLogs */
 /** @var bool $collectorDebug */
 /** @var array<string, mixed>|null $parseDebug */
+/** @var array<string, mixed>|null $fetchDebug */
 $parseDebug = is_array($singleResult ?? null) ? ($singleResult['parse_debug'] ?? null) : null;
+$fetchDebug = is_array($singleResult ?? null) ? ($singleResult['fetch_debug'] ?? null) : null;
 ?>
 <div class="page-header page-header-row">
     <div>
@@ -86,6 +88,34 @@ $parseDebug = is_array($singleResult ?? null) ? ($singleResult['parse_debug'] ??
                     PZN <?= e((string) ($singleResult['pzn'] ?? '')) ?>:
                     <?= e((string) ($singleResult['message'] ?? '')) ?>
                     (<?= (int) ($singleResult['snapshots_created'] ?? 0) ?> Snapshot(s))
+                </div>
+            <?php endif; ?>
+            <?php if ($collectorDebug && is_array($fetchDebug)): ?>
+                <div class="panel" style="margin-top:1rem;">
+                    <div class="panel-header"><h3>Abruf-Debug</h3></div>
+                    <div class="panel-body">
+                        <dl class="detail-dl">
+                            <?php foreach ([
+                                'search_url' => 'Such-URL',
+                                'resolved_url' => 'Resolved URL',
+                                'effective_url' => 'Effective URL',
+                                'pzn_found' => 'PZN gefunden',
+                                'cache_hit' => 'Cache Hit',
+                                'status' => 'Status',
+                                'http_code' => 'HTTP',
+                                'duration_ms' => 'Dauer (ms)',
+                            ] as $key => $label): ?>
+                                <?php if (array_key_exists($key, $fetchDebug) && $fetchDebug[$key] !== null && $fetchDebug[$key] !== ''): ?>
+                                    <dt><?= e($label) ?></dt>
+                                    <dd><?= is_bool($fetchDebug[$key]) ? ($fetchDebug[$key] ? 'ja' : 'nein') : e((string) $fetchDebug[$key]) ?></dd>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                            <?php if (!empty($fetchDebug['error'])): ?>
+                                <dt>Fehler</dt>
+                                <dd><?= e((string) $fetchDebug['error']) ?></dd>
+                            <?php endif; ?>
+                        </dl>
+                    </div>
                 </div>
             <?php endif; ?>
             <?php if ($collectorDebug && is_array($parseDebug)): ?>
@@ -186,8 +216,14 @@ $parseDebug = is_array($singleResult ?? null) ? ($singleResult['parse_debug'] ??
                                 <td><?= (int) ($log['duration_ms'] ?? 0) ?> ms</td>
                                 <td>
                                     <?= e((string) ($log['status'] ?? '')) ?>
+                                    <?php if ($collectorDebug && !empty($log['source_url'])): ?>
+                                        <br><small class="text-muted">Suche: <?= e((string) $log['source_url']) ?></small>
+                                    <?php endif; ?>
+                                    <?php if ($collectorDebug && !empty($log['resolved_url'])): ?>
+                                        <br><small class="text-muted">Resolved: <?= e((string) $log['resolved_url']) ?></small>
+                                    <?php endif; ?>
                                     <?php if ($collectorDebug && !empty($log['url'])): ?>
-                                        <br><small class="text-muted"><?= e((string) $log['url']) ?></small>
+                                        <br><small class="text-muted">URL: <?= e((string) $log['url']) ?></small>
                                     <?php endif; ?>
                                     <?php if ($collectorDebug && !empty($log['error_message'])): ?>
                                         <br><small class="text-muted"><?= e((string) $log['error_message']) ?></small>

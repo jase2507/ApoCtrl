@@ -153,6 +153,8 @@ CREATE TABLE IF NOT EXISTS collector_logs (
     run_id INTEGER,
     pzn TEXT,
     url TEXT,
+    resolved_url TEXT,
+    source_url TEXT,
     http_code INTEGER,
     duration_ms INTEGER,
     status TEXT,

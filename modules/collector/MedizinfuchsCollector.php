@@ -48,7 +48,16 @@ class MedizinfuchsCollector
         try {
             $html = $this->provider->fetchByPzn($pzn);
         } catch (Throwable $e) {
-            return $this->result($productId, $pzn, false, 0, 0, 'Abruf: ' . $e->getMessage());
+            return $this->result(
+                $productId,
+                $pzn,
+                false,
+                0,
+                0,
+                'Abruf: ' . $e->getMessage(),
+                null,
+                $this->providerFetchDebug(),
+            );
         }
 
         try {
@@ -136,7 +145,22 @@ class MedizinfuchsCollector
             $competitorsSeen,
             $snapshotsCreated . ' Snapshot(s), Ranking aktualisiert.',
             $this->parser->getLastParseDebug(),
+            $this->providerFetchDebug(),
         );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function providerFetchDebug(): ?array
+    {
+        if (!$this->provider instanceof MedizinfuchsProvider) {
+            return null;
+        }
+
+        $debug = $this->provider->getLastFetchDebug();
+
+        return $debug !== [] ? $debug : null;
     }
 
     /**
@@ -189,6 +213,7 @@ class MedizinfuchsCollector
         int $competitorsSeen,
         string $message,
         ?array $parseDebug = null,
+        ?array $fetchDebug = null,
     ): array {
         $payload = [
             'success' => $success,
@@ -201,6 +226,10 @@ class MedizinfuchsCollector
 
         if ($parseDebug !== null && ($parseDebug['offers'] ?? []) !== []) {
             $payload['parse_debug'] = $parseDebug;
+        }
+
+        if ($fetchDebug !== null) {
+            $payload['fetch_debug'] = $fetchDebug;
         }
 
         return $payload;

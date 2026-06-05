@@ -174,18 +174,22 @@ class CollectorRepository
         int $durationMs,
         string $status,
         ?string $errorMessage,
+        ?string $resolvedUrl = null,
+        ?string $sourceUrl = null,
     ): int {
         $stmt = $this->pdo->prepare(
             'INSERT INTO collector_logs (
-                run_id, pzn, url, http_code, duration_ms, status, error_message
+                run_id, pzn, url, resolved_url, source_url, http_code, duration_ms, status, error_message
             ) VALUES (
-                :run_id, :pzn, :url, :http_code, :duration_ms, :status, :error_message
+                :run_id, :pzn, :url, :resolved_url, :source_url, :http_code, :duration_ms, :status, :error_message
             )'
         );
         $stmt->execute([
             'run_id' => $runId,
             'pzn' => trim($pzn),
             'url' => $url,
+            'resolved_url' => $resolvedUrl,
+            'source_url' => $sourceUrl,
             'http_code' => $httpCode,
             'duration_ms' => max(0, $durationMs),
             'status' => $status,
@@ -202,7 +206,7 @@ class CollectorRepository
     {
         $limit = max(1, min(100, $limit));
         $stmt = $this->pdo->prepare(
-            'SELECT id, run_id, pzn, url, http_code, duration_ms, status, error_message, created_at
+            'SELECT id, run_id, pzn, url, resolved_url, source_url, http_code, duration_ms, status, error_message, created_at
              FROM collector_logs
              ORDER BY id DESC
              LIMIT :limit'
