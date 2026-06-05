@@ -24,6 +24,7 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         private readonly bool $fetchAjaxOffers = true,
         private readonly ?CollectorRepository $logRepository = null,
         private readonly ?MedizinfuchsUrlResolver $urlResolver = null,
+        private readonly ?MedizinfuchsHttpClient $httpClient = null,
     ) {
     }
 
@@ -132,19 +133,18 @@ class MedizinfuchsProvider implements CollectorProviderInterface
 
             if ($resolvedUrl === null) {
                 $message = 'Keine Medizinfuchs-Seite zur PZN gefunden.';
-                $this->lastFetchDebug = [
+                $this->lastFetchDebug = array_merge([
                     'pzn' => $pzn,
                     'url' => null,
                     'search_url' => $sourceUrl,
                     'resolved_url' => null,
                     'effective_url' => $resolveDebug['effective_url'] ?? null,
                     'pzn_found' => false,
-                    'http_code' => null,
                     'duration_ms' => 0,
                     'cache_hit' => false,
                     'status' => 'error',
                     'error' => $message,
-                ];
+                ], $this->extractHttpDebugFields($resolveDebug));
                 $this->persistLog(
                     $pzn,
                     $sourceUrl ?? '',
@@ -170,11 +170,12 @@ class MedizinfuchsProvider implements CollectorProviderInterface
         $started = microtime(true);
         try {
             $this->enforceRateLimit();
-            $response = $this->httpFetch($url);
+            $response = $this->fetchHttp($url);
             $durationMs = (int) round((microtime(true) - $started) * 1000);
             $httpCode = (int) ($response['http_code'] ?? 0);
             $html = (string) ($response['html'] ?? '');
             $effectiveUrl = (string) ($response['effective_url'] ?? $url);
+            $httpDebug = $this->extractHttpDebugFields(MedizinfuchsHttpClient::toDebugMeta($response));
 
             if ($this->fetchAjaxOffers) {
                 $html = $this->enrichWithAjaxOffers($html, $effectiveUrl);
@@ -183,19 +184,18 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             $httpRejected = $httpCode > 0 && ($httpCode < 200 || $httpCode >= 400);
             if ($html === '' || $httpRejected) {
                 $message = (string) ($response['error'] ?? 'Leere oder ungültige HTTP-Antwort.');
-                $this->lastFetchDebug = [
+                $this->lastFetchDebug = array_merge([
                     'pzn' => $pzn,
                     'url' => $url,
                     'search_url' => $sourceUrl,
                     'resolved_url' => $resolvedUrl,
                     'effective_url' => $effectiveUrl,
                     'pzn_found' => $resolveDebug['pzn_found'] ?? true,
-                    'http_code' => $httpCode > 0 ? $httpCode : null,
                     'duration_ms' => $durationMs,
                     'cache_hit' => false,
                     'status' => 'error',
                     'error' => $message,
-                ];
+                ], $httpDebug);
                 $this->persistLog(
                     $pzn,
                     $effectiveUrl,
@@ -213,19 +213,18 @@ class MedizinfuchsProvider implements CollectorProviderInterface
 
             $this->writeCache($cachePath, $html);
 
-            $this->lastFetchDebug = [
+            $this->lastFetchDebug = array_merge([
                 'pzn' => $pzn,
                 'url' => $url,
                 'search_url' => $sourceUrl,
                 'resolved_url' => $resolvedUrl,
                 'effective_url' => $effectiveUrl,
                 'pzn_found' => $resolveDebug['pzn_found'] ?? true,
-                'http_code' => $httpCode,
                 'duration_ms' => $durationMs,
                 'cache_hit' => false,
                 'status' => 'ok',
                 'error' => null,
-            ];
+            ], $httpDebug);
             $this->persistLog(
                 $pzn,
                 $effectiveUrl,
@@ -370,7 +369,7 @@ class MedizinfuchsProvider implements CollectorProviderInterface
             CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_USERAGENT => $this->userAgent,
-            CURLOPT_HTTPHEADER => ['Accept: text/html', 'Connection: close'],
+                CURLOPT_HTTPHEADER => MedizinfuchsHttpClient::defaultRequestHeaders(),
             CURLOPT_COOKIEJAR => $cookieFile,
             CURLOPT_COOKIEFILE => $cookieFile,
             CURLOPT_SSL_VERIFYPEER => !$this->allowInsecureSsl,
@@ -441,118 +440,46 @@ class MedizinfuchsProvider implements CollectorProviderInterface
     }
 
     /**
-     * @return array{html:?string,http_code:?int,error:?string,effective_url:?string}
+     * @return array<string, mixed>
      */
-    private function httpFetch(string $url): array
+    private function fetchHttp(string $url): array
     {
-        if (function_exists('curl_init')) {
-            return $this->httpFetchCurl($url);
+        if ($this->httpClient !== null) {
+            return $this->httpClient->fetch($url);
         }
 
-        return $this->httpFetchStream($url);
+        $client = new MedizinfuchsHttpClient(
+            $this->userAgent,
+            $this->timeoutSeconds,
+            $this->allowInsecureSsl,
+        );
+
+        return $client->fetch($url);
     }
 
     /**
-     * @return array{html:?string,http_code:?int,error:?string,effective_url:?string}
+     * @param array<string, mixed> $debug
+     * @return array<string, mixed>
      */
-    private function httpFetchCurl(string $url): array
+    private function extractHttpDebugFields(array $debug): array
     {
-        $result = ['html' => null, 'http_code' => null, 'error' => null, 'effective_url' => $url];
-
-        $ch = curl_init($url);
-        if ($ch === false) {
-            $result['error'] = 'curl_init() fehlgeschlagen';
-
-            return $result;
+        $fields = [
+            'http_code',
+            'content_type',
+            'response_length',
+            'user_agent',
+            'transport',
+            'content_checks',
+            'response_preview',
+        ];
+        $out = [];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $debug) && $debug[$field] !== null && $debug[$field] !== '') {
+                $out[$field] = $debug[$field];
+            }
         }
 
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 5,
-            CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
-            CURLOPT_USERAGENT => $this->userAgent,
-            CURLOPT_HTTPHEADER => ['Accept: text/html', 'Connection: close'],
-            CURLOPT_SSL_VERIFYPEER => !$this->allowInsecureSsl,
-            CURLOPT_SSL_VERIFYHOST => $this->allowInsecureSsl ? 0 : 2,
-            CURLOPT_ENCODING => '',
-        ]);
-
-        $html = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        unset($ch);
-
-        $result['curl_errno'] = $errno;
-        if ($errno !== 0) {
-            $result['error'] = $error !== '' ? $error : 'cURL Fehler ' . $errno;
-        }
-
-        $result['http_code'] = is_int($httpCode) && $httpCode > 0 ? $httpCode : null;
-        $result['effective_url'] = is_string($effectiveUrl) && $effectiveUrl !== '' ? $effectiveUrl : $url;
-        $result['html'] = is_string($html) && $html !== '' ? $html : null;
-
-        return $result;
-    }
-
-    /**
-     * @return array{html:?string,http_code:?int,error:?string,effective_url:?string}
-     */
-    private function httpFetchStream(string $url): array
-    {
-        $result = ['html' => null, 'http_code' => null, 'error' => null, 'effective_url' => $url];
-
-        if (!filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOL)) {
-            $result['error'] = 'allow_url_fopen deaktiviert';
-
-            return $result;
-        }
-
-        $ssl = $this->allowInsecureSsl
-            ? ['verify_peer' => false, 'verify_peer_name' => false]
-            : ['verify_peer' => true, 'verify_peer_name' => true];
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'timeout' => $this->timeoutSeconds,
-                'header' => "User-Agent: {$this->userAgent}\r\nAccept: text/html\r\nConnection: close\r\n",
-                'follow_location' => 1,
-                'max_redirects' => 5,
-            ],
-            'ssl' => $ssl,
-        ]);
-
-        $previous = ini_get('default_socket_timeout');
-        ini_set('default_socket_timeout', (string) $this->timeoutSeconds);
-        error_clear_last();
-        $html = @file_get_contents($url, false, $context);
-        $phpError = error_get_last();
-        if ($previous !== false) {
-            ini_set('default_socket_timeout', (string) $previous);
-        }
-
-        $headers = function_exists('http_get_last_response_headers')
-            ? http_get_last_response_headers()
-            : null;
-        if (is_array($headers) && isset($headers[0]) && preg_match('/\s(\d{3})\s/', $headers[0], $m) === 1) {
-            $result['http_code'] = (int) $m[1];
-        }
-
-        if (!is_string($html) || $html === '') {
-            $result['error'] = is_array($phpError) && isset($phpError['message'])
-                ? (string) $phpError['message']
-                : 'Leere Stream-Antwort';
-
-            return $result;
-        }
-
-        $result['html'] = $html;
-
-        return $result;
+        return $out;
     }
 
     private function persistLog(

@@ -11,10 +11,8 @@ class MedizinfuchsUrlResolver
 
     public function __construct(
         private readonly string $searchUrlTemplate,
-        private readonly int $timeoutSeconds,
         private readonly int $requestDelayMs,
-        private readonly string $userAgent,
-        private readonly bool $allowInsecureSsl,
+        private readonly MedizinfuchsHttpClient $httpClient,
     ) {
     }
 
@@ -54,7 +52,9 @@ class MedizinfuchsUrlResolver
         ];
 
         $this->enforceRateLimit();
-        $response = $this->httpFetch($searchUrl);
+        $response = $this->httpClient->fetch($searchUrl);
+        $this->mergeHttpDebug($response);
+
         $html = (string) ($response['html'] ?? '');
         $effectiveUrl = (string) ($response['effective_url'] ?? $searchUrl);
         $this->lastResolveDebug['effective_url'] = $effectiveUrl;
@@ -72,6 +72,17 @@ class MedizinfuchsUrlResolver
         $this->lastResolveDebug['resolved_url'] = $resolvedUrl;
 
         return $resolvedUrl;
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     */
+    private function mergeHttpDebug(array $response): void
+    {
+        $this->lastResolveDebug = array_merge(
+            $this->lastResolveDebug,
+            MedizinfuchsHttpClient::toDebugMeta($response),
+        );
     }
 
     private function buildSearchUrl(string $pzn): string
@@ -216,103 +227,5 @@ class MedizinfuchsUrlResolver
         }
 
         self::$lastRequestAt = microtime(true);
-    }
-
-    /**
-     * @return array{html:?string,http_code:?int,error:?string,effective_url:?string}
-     */
-    private function httpFetch(string $url): array
-    {
-        if (!function_exists('curl_init')) {
-            return $this->httpFetchStream($url);
-        }
-
-        $result = ['html' => null, 'http_code' => null, 'error' => null, 'effective_url' => $url];
-        $ch = curl_init($url);
-        if ($ch === false) {
-            $result['error'] = 'curl_init() fehlgeschlagen';
-
-            return $result;
-        }
-
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 5,
-            CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
-            CURLOPT_USERAGENT => $this->userAgent,
-            CURLOPT_HTTPHEADER => ['Accept: text/html', 'Connection: close'],
-            CURLOPT_SSL_VERIFYPEER => !$this->allowInsecureSsl,
-            CURLOPT_SSL_VERIFYHOST => $this->allowInsecureSsl ? 0 : 2,
-            CURLOPT_ENCODING => '',
-        ]);
-
-        $html = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        unset($ch);
-
-        if ($errno !== 0) {
-            $result['error'] = $error !== '' ? $error : 'cURL Fehler ' . $errno;
-        }
-
-        $result['http_code'] = is_int($httpCode) && $httpCode > 0 ? $httpCode : null;
-        $result['effective_url'] = is_string($effectiveUrl) && $effectiveUrl !== '' ? $effectiveUrl : $url;
-        $result['html'] = is_string($html) && $html !== '' ? $html : null;
-
-        return $result;
-    }
-
-    /**
-     * @return array{html:?string,http_code:?int,error:?string,effective_url:?string}
-     */
-    private function httpFetchStream(string $url): array
-    {
-        $result = ['html' => null, 'http_code' => null, 'error' => null, 'effective_url' => $url];
-
-        if (!filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOL)) {
-            $result['error'] = 'allow_url_fopen deaktiviert';
-
-            return $result;
-        }
-
-        $ssl = $this->allowInsecureSsl
-            ? ['verify_peer' => false, 'verify_peer_name' => false]
-            : ['verify_peer' => true, 'verify_peer_name' => true];
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'timeout' => $this->timeoutSeconds,
-                'header' => "User-Agent: {$this->userAgent}\r\nAccept: text/html\r\nConnection: close\r\n",
-                'follow_location' => 1,
-                'max_redirects' => 5,
-            ],
-            'ssl' => $ssl,
-        ]);
-
-        $previous = ini_get('default_socket_timeout');
-        ini_set('default_socket_timeout', (string) $this->timeoutSeconds);
-        error_clear_last();
-        $html = @file_get_contents($url, false, $context);
-        $phpError = error_get_last();
-        if ($previous !== false) {
-            ini_set('default_socket_timeout', (string) $previous);
-        }
-
-        if (!is_string($html) || $html === '') {
-            $result['error'] = is_array($phpError) && isset($phpError['message'])
-                ? (string) $phpError['message']
-                : 'Leere Stream-Antwort';
-
-            return $result;
-        }
-
-        $result['html'] = $html;
-
-        return $result;
     }
 }

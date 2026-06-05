@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/core/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/collector/CollectorProviderInterface.php';
+require_once dirname(__DIR__) . '/modules/collector/MedizinfuchsHttpClient.php';
 require_once dirname(__DIR__) . '/modules/collector/MedizinfuchsUrlResolver.php';
 require_once dirname(__DIR__) . '/modules/collector/MedizinfuchsProvider.php';
 require_once dirname(__DIR__) . '/modules/collector/collector_factory.php';
@@ -65,13 +66,13 @@ $searchResolveContent = str_replace(
 $tempSearchResolve = $cacheDir . '/phase73_search_resolve_16609329.html';
 file_put_contents($tempSearchResolve, $searchResolveContent);
 
+$testHttp = new MedizinfuchsHttpClient($userAgent, 5, false, false, '');
+
 MedizinfuchsUrlResolver::resetRateLimitClock();
 $resolver = new MedizinfuchsUrlResolver(
     fileUrl($tempSearchResolve) . '?pzn={PZN}',
-    5,
     0,
-    $userAgent,
-    false,
+    $testHttp,
 );
 
 $resolved = $resolver->resolveProductUrl('16609329');
@@ -88,10 +89,8 @@ $fallbackPath = $fixturesDir . '/medizinfuchs_search_fallback_99887766.html';
 $fallbackSearchUrl = fileUrl($fallbackPath);
 $fallbackResolver = new MedizinfuchsUrlResolver(
     $fallbackSearchUrl . '?q={PZN}',
-    5,
     0,
-    $userAgent,
-    false,
+    $testHttp,
 );
 $fallbackResolved = $fallbackResolver->resolveProductUrl('99887766');
 check($fallbackResolved !== null, 'Suchseite als Fallback erlaubt', $failures);
@@ -104,10 +103,8 @@ check(
 
 $missingResolver = new MedizinfuchsUrlResolver(
     fileUrl($fixturesDir . '/medizinfuchs_search_missing.html') . '?pzn={PZN}',
-    5,
     0,
-    $userAgent,
-    false,
+    $testHttp,
 );
 check($missingResolver->resolveProductUrl('81111111') === null, 'Fehlende PZN blockiert', $failures);
 check(
@@ -130,6 +127,7 @@ $liveProvider = new MedizinfuchsProvider(
     false,
     $collectorRepo,
     $resolver,
+    $testHttp,
 );
 
 $fetchPzn = '16609329';
@@ -175,6 +173,7 @@ $cacheProvider = new MedizinfuchsProvider(
     false,
     $collectorRepo,
     $resolver,
+    $testHttp,
 );
 
 try {
@@ -254,7 +253,7 @@ copy(
     $fixturesDir . '/medizinfuchs_search_fallback_' . $badPzn . '.html',
 );
 $loopSearchTemplate = fileUrl($fixturesDir . '/medizinfuchs_search_fallback_{PZN}.html');
-$loopResolver = new MedizinfuchsUrlResolver($loopSearchTemplate, 5, 0, $userAgent, false);
+$loopResolver = new MedizinfuchsUrlResolver($loopSearchTemplate, 0, $testHttp);
 $runId = $collectorRepo->startCollectionRun();
 $collector = new MedizinfuchsCollector(
     new MedizinfuchsProvider(
@@ -270,6 +269,7 @@ $collector = new MedizinfuchsCollector(
         false,
         $collectorRepo,
         $loopResolver,
+        $testHttp,
     ),
     new MedizinfuchsParser(),
     $collectorRepo,

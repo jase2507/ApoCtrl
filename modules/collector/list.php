@@ -98,11 +98,15 @@ $fetchDebug = is_array($singleResult ?? null) ? ($singleResult['fetch_debug'] ??
                             <?php foreach ([
                                 'search_url' => 'Such-URL',
                                 'resolved_url' => 'Resolved URL',
-                                'effective_url' => 'Effective URL',
+                                'effective_url' => 'Final URL',
                                 'pzn_found' => 'PZN gefunden',
                                 'cache_hit' => 'Cache Hit',
                                 'status' => 'Status',
-                                'http_code' => 'HTTP',
+                                'http_code' => 'HTTP-Code',
+                                'content_type' => 'Content-Type',
+                                'response_length' => 'Response-Länge',
+                                'user_agent' => 'User-Agent',
+                                'transport' => 'Transport',
                                 'duration_ms' => 'Dauer (ms)',
                             ] as $key => $label): ?>
                                 <?php if (array_key_exists($key, $fetchDebug) && $fetchDebug[$key] !== null && $fetchDebug[$key] !== ''): ?>
@@ -114,7 +118,22 @@ $fetchDebug = is_array($singleResult ?? null) ? ($singleResult['fetch_debug'] ??
                                 <dt>Fehler</dt>
                                 <dd><?= e((string) $fetchDebug['error']) ?></dd>
                             <?php endif; ?>
+                            <?php if (!empty($fetchDebug['content_checks']) && is_array($fetchDebug['content_checks'])): ?>
+                                <dt>Inhalt-Prüfung</dt>
+                                <dd>
+                                    <?php foreach ($fetchDebug['content_checks'] as $marker => $found): ?>
+                                        <span class="badge <?= $found ? 'badge-active' : 'badge-inactive' ?>">
+                                            <?= e((string) $marker) ?>: <?= $found ? 'ja' : 'nein' ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </dd>
+                            <?php endif; ?>
+                            <?php if (!empty($fetchDebug['response_preview'])): ?>
+                                <dt>Response-Vorschau</dt>
+                                <dd><pre class="code-preview" style="max-height:12rem;overflow:auto;"><?= e((string) $fetchDebug['response_preview']) ?></pre></dd>
+                            <?php endif; ?>
                         </dl>
+                        <p><a href="collector_diagnose.php" class="btn btn-secondary btn-sm">HTTP-Diagnose öffnen</a></p>
                     </div>
                 </div>
             <?php endif; ?>
@@ -191,7 +210,11 @@ $fetchDebug = is_array($singleResult ?? null) ? ($singleResult['fetch_debug'] ??
     </div>
     <div class="panel-body">
         <?php if ($collectorDebug): ?>
-            <p class="text-muted">Debug-Modus aktiv: Abrufdetails werden nach jedem Lauf in den Logs gespeichert (URL, HTTP, Dauer, Cache).</p>
+            <p class="text-muted">
+                Debug-Modus aktiv: HTTP-Code, Content-Type, Response-Länge, Final URL und User-Agent werden protokolliert.
+                Letzte Response-Vorschau: <code>storage/debug/medizinfuchs_last_response.html</code>
+                — <a href="collector_diagnose.php">HTTP-Diagnose</a>
+            </p>
         <?php endif; ?>
         <?php if (($latestLogs ?? []) === []): ?>
             <p class="text-muted">Noch keine Abruf-Logs vorhanden.</p>

@@ -72,7 +72,7 @@ return [
         'cache_ttl_minutes' => 15,
         'timeout' => 15,
         'fetch_timeout' => 15,
-        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ApoCtrl Collector',
+        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0 Safari/537.36',
         // Fallback-Produkt-URL (wenn kein UrlResolver aktiv, z. B. Mock)
         'medizinfuchs_url_template' => 'https://www.medizinfuchs.de/preisvergleich/produkt-pzn-{PZN}.html',
         // Phase 7.3: PZN-Suche → Produktseite auflösen
